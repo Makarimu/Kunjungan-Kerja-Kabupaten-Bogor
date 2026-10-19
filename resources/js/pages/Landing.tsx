@@ -2,6 +2,7 @@ import { useRef, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import PublicLayout from '../layouts/PublicLayout';
 import { getApprovedReviews } from '../api/review';
+import { getPublicSettings } from '../api/settings';
 import BogorMap from '../components/common/BogorMap';
 import { assetUrl } from '../utils/url';
 
@@ -19,6 +20,7 @@ export default function Landing() {
   const [reviewBtnLeft, setReviewBtnLeft] = useState(true);
   const [reviewBtnRight, setReviewBtnRight] = useState(false);
   const [reviews, setReviews] = useState<any[]>([]);
+  const [minHari, setMinHari] = useState<number>(1);
 
   const scrollToSection = (ref: React.RefObject<HTMLDivElement | null>) => {
     ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -71,6 +73,14 @@ export default function Landing() {
       .catch((err) => {
         if (isMounted) console.error('Error fetching approved reviews:', err);
       });
+
+    getPublicSettings()
+      .then((res) => {
+        if (isMounted && res?.data?.min_hari_kunjungan) {
+          setMinHari(Number(res.data.min_hari_kunjungan));
+        }
+      })
+      .catch(() => {});
 
     return () => {
       isMounted = false;
@@ -424,7 +434,7 @@ export default function Landing() {
                 <h3>Hal yang Perlu Diperhatikan</h3>
               </div>
               <ul>
-                <li>Pengajuan minimal 1 hari sebelum rencana tanggal kunjungan</li>
+                <li>Pengajuan minimal {minHari} hari sebelum rencana tanggal kunjungan</li>
                 <li>Proses review dan disposisi oleh admin memakan waktu 1–3 hari kerja</li>
                 <li>Simpan Kode Permohonan unik untuk memantau status secara berkala</li>
                 <li>Pemberitahuan status resmi dikirimkan secara otomatis via email</li>
@@ -533,7 +543,7 @@ export default function Landing() {
               </div>
               <div className="gov-video-embed">
                 <iframe
-                  src="https://www.youtube.com/embed/nQuyVqZm3SU"
+                  src="https://www.youtube.com/embed/benN68yUAJE"
                   title="Tutorial Pengajuan Permohonan Kunjungan Kerja"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   allowFullScreen

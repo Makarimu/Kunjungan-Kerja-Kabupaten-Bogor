@@ -605,7 +605,7 @@ const UploadArea = memo(function UploadArea({ file, onChange, error, id }: any) 
 });
 
 // ---- Disclaimer Modal — React.memo ----
-const DisclaimerModal = memo(function DisclaimerModal({ open, onClose }: any) {
+const DisclaimerModal = memo(function DisclaimerModal({ open, onClose, minHari = 1 }: any) {
   const [checked, setChecked] = useState(false);
   const handleCheck = useCallback((e: any) => setChecked(e.target.checked), []);
   return (
@@ -620,7 +620,7 @@ const DisclaimerModal = memo(function DisclaimerModal({ open, onClose }: any) {
           </p>
           <ol className="disclaimer-list">
             <li>Kunjungan kerja dilaksanakan pada hari Senin s.d. Jum'at.</li>
-            <li>Surat permohonan disampaikan paling lambat 1 hari sebelum kegiatan.</li>
+            <li>Surat permohonan disampaikan paling lambat {minHari} hari sebelum kegiatan.</li>
             <li>Kunjungan lebih dari 1 hari <strong>DIWAJIBKAN MENGINAP di hotel wilayah Kabupaten Bogor.</strong></li>
             <li>Pelanggaran ketentuan mengakibatkan permohonan tidak dapat diterima.</li>
           </ol>
@@ -871,12 +871,21 @@ export default function Permohonan() {
   const [blockedDetails, setBlockedDetails] = useState<Record<string, any>>({});
   const [fullDates, setFullDates] = useState<string[]>([]);
   const [minDateStr, setMinDateStr] = useState<string>('');
+  const [minHari, setMinHari] = useState<number>(1);
   const [userBookedDates, setUserBookedDates] = useState<string[]>([]);
   const [toast, setToast] = useState({ show: false, msg: '', type: 'success' });
   const [dinasList, setDinasList] = useState<any[]>([]);
   const [isDinasOpen, setIsDinasOpen] = useState(false);
 
   useEffect(() => {
+    api.get('/settings/public')
+      .then(res => {
+        if (res.data?.data?.min_hari_kunjungan) {
+          setMinHari(Number(res.data.data.min_hari_kunjungan));
+        }
+      })
+      .catch(() => {});
+
     api.get('/dinas')
       .then(res => {
         if (res.data.success) {
@@ -941,6 +950,9 @@ export default function Permohonan() {
 
         if (res.data.min_date) {
           setMinDateStr(res.data.min_date);
+        }
+        if (res.data.min_hari !== undefined) {
+          setMinHari(Number(res.data.min_hari));
         }
         // Hanya update userBookedDates jika request dikirim dengan email valid.
         if (emailParam) {
@@ -1168,7 +1180,7 @@ export default function Permohonan() {
 
   return (
     <PublicLayout>
-      <DisclaimerModal open={showDisclaimer} onClose={handleCloseDisclaimer} />
+      <DisclaimerModal open={showDisclaimer} onClose={handleCloseDisclaimer} minHari={minHari} />
       <InfoMenginapModal open={showInfoMenginap} onClose={handleCloseInfoMenginap} />
       <KonfirmasiKirimModal open={showSubmitConfirm} onYes={handleYesSubmitConfirm} onNo={handleCloseSubmitConfirm} loading={submitting} />
       <RecaptchaModal open={showRecaptcha} onVerified={submitPermohonan} onClose={handleCloseRecaptcha} loading={submitting} />

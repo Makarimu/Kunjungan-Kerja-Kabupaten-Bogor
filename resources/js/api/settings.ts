@@ -5,6 +5,7 @@ export interface HeaderSettings {
   header_jam_layanan: string;
   header_link_portal_bogor?: string;
   header_link_portal_ekabo?: string;
+  min_hari_kunjungan?: number | string;
 }
 
 export const getPublicSettings = async () => {

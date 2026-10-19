@@ -18,6 +18,7 @@ class SettingController extends Controller
             'header_jam_layanan' => Setting::get('header_jam_layanan', 'Jam Layanan: Senin – Jumat (08.00 – 16.00 WIB)'),
             'header_link_portal_bogor' => Setting::get('header_link_portal_bogor', 'https://bogorkab.go.id'),
             'header_link_portal_ekabo' => Setting::get('header_link_portal_ekabo', 'https://ekabo.bogorkab.go.id'),
+            'min_hari_kunjungan' => (int) Setting::get('min_hari_kunjungan', 1),
         ];
 
         return response()->json([
@@ -47,6 +48,7 @@ class SettingController extends Controller
                 'header_jam_layanan' => $settings->get('header_jam_layanan', 'Jam Layanan: Senin – Jumat (08.00 – 16.00 WIB)'),
                 'header_link_portal_bogor' => $settings->get('header_link_portal_bogor', 'https://bogorkab.go.id'),
                 'header_link_portal_ekabo' => $settings->get('header_link_portal_ekabo', 'https://ekabo.bogorkab.go.id'),
+                'min_hari_kunjungan' => (int) $settings->get('min_hari_kunjungan', 1),
             ],
         ]);
     }
@@ -68,10 +70,11 @@ class SettingController extends Controller
             'header_jam_layanan' => 'nullable|string|max:255',
             'header_link_portal_bogor' => 'nullable|string|max:500',
             'header_link_portal_ekabo' => 'nullable|string|max:500',
+            'min_hari_kunjungan' => 'nullable|integer|min:1|max:60',
         ]);
 
         foreach ($validated as $key => $value) {
-            Setting::set($key, $value);
+            Setting::set($key, $value !== null ? (string)$value : null);
         }
 
         return response()->json([
@@ -82,6 +85,7 @@ class SettingController extends Controller
                 'header_jam_layanan' => Setting::get('header_jam_layanan'),
                 'header_link_portal_bogor' => Setting::get('header_link_portal_bogor'),
                 'header_link_portal_ekabo' => Setting::get('header_link_portal_ekabo'),
+                'min_hari_kunjungan' => (int) Setting::get('min_hari_kunjungan', 1),
             ],
         ]);
     }

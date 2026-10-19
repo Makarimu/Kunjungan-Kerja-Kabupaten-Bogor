@@ -48,38 +48,38 @@ class H7ValidationTest extends TestCase
     }
 
     /**
-     * Skenario 1 & 2: Email baru mengajukan — kunjungan < H+7 ditolak, >= H+7 diterima.
+     * Skenario 1 & 2: Email baru mengajukan — kunjungan < H+1 ditolak, >= H+1 diterima.
      */
-    public function test_email_baru_harus_minimal_h7_dari_tanggal_pengajuan()
+    public function test_email_baru_harus_minimal_h1_dari_tanggal_pengajuan()
     {
         $today = Carbon::today();
-        $h6Date = $today->copy()->addDays(6)->toDateString();
-        $h7Date = $today->copy()->addDays(7);
+        $h0Date = $today->toDateString();
+        $h1Date = $today->copy()->addDays(1);
         // Pastikan tidak jatuh di akhir pekan untuk pengujian yang valid
-        while ($h7Date->isWeekend()) {
-            $h7Date->addDay();
+        while ($h1Date->isWeekend()) {
+            $h1Date->addDay();
         }
-        $h7DateStr = $h7Date->toDateString();
+        $h1DateStr = $h1Date->toDateString();
 
         $email = 'baru@gmail.com';
 
-        // H+6 -> GAGAL
-        $resFail = $this->postJson('/api/permohonan', $this->getPayload($email, $h6Date));
+        // Hari ini (H+0) -> GAGAL
+        $resFail = $this->postJson('/api/permohonan', $this->getPayload($email, $h0Date));
         $resFail->assertStatus(422)
                 ->assertJsonValidationErrors(['tanggal_kunjungan']);
 
-        // H+7 -> BERHASIL
-        $resSuccess = $this->postJson('/api/permohonan', $this->getPayload($email, $h7DateStr));
+        // H+1 -> BERHASIL
+        $resSuccess = $this->postJson('/api/permohonan', $this->getPayload($email, $h1DateStr));
         $resSuccess->assertStatus(201);
     }
 
     /**
-     * Skenario 3 & 4: Email yang sama mengajukan lagi — harus minimal H+7 dari kunjungan terakhir.
+     * Skenario 3 & 4: Email yang sama mengajukan lagi — harus minimal H+1 dari kunjungan terakhir.
      */
-    public function test_email_yang_sama_mengajukan_lagi_minimal_h7_dari_kunjungan_terakhir()
+    public function test_email_yang_sama_mengajukan_lagi_minimal_h1_dari_kunjungan_terakhir()
     {
         $email = 'pemohon.tetap@gmail.com';
-        $visit1 = Carbon::today()->addDays(10);
+        $visit1 = Carbon::today()->addDays(3);
         while ($visit1->isWeekend()) {
             $visit1->addDay();
         }
@@ -91,14 +91,14 @@ class H7ValidationTest extends TestCase
             'status' => 'Disetujui',
         ]);
 
-        // Kunjungan 2: H+6 dari visit1 -> GAGAL
-        $failVisit = $visit1->copy()->addDays(6)->toDateString();
+        // Kunjungan 2: hari yang sama sebelum H+1 -> GAGAL
+        $failVisit = $visit1->toDateString();
         $resFail = $this->postJson('/api/permohonan', $this->getPayload($email, $failVisit));
         $resFail->assertStatus(422)
                 ->assertJsonValidationErrors(['tanggal_kunjungan']);
 
-        // Kunjungan 2: H+7 dari visit1 -> BERHASIL
-        $successVisit = $visit1->copy()->addDays(7);
+        // Kunjungan 2: H+1 dari visit1 -> BERHASIL
+        $successVisit = $visit1->copy()->addDays(1);
         while ($successVisit->isWeekend()) {
             $successVisit->addDay();
         }
@@ -114,20 +114,20 @@ class H7ValidationTest extends TestCase
         $emailA = 'pemohonA@gmail.com';
         $emailB = 'pemohonB@gmail.com';
 
-        $visitA = Carbon::today()->addDays(20);
+        $visitA = Carbon::today()->addDays(5);
         while ($visitA->isWeekend()) {
             $visitA->addDay();
         }
 
-        // Email A punya kunjungan H+20 berstatus Disetujui
+        // Email A punya kunjungan berstatus Disetujui
         Permohonan::factory()->create([
             'email' => $emailA,
             'tanggal_kunjungan' => $visitA->toDateString(),
             'status' => 'Disetujui',
         ]);
 
-        // Email B mengajukan H+7 dari pengajuan (misal H+8)
-        $visitB = Carbon::today()->addDays(8);
+        // Email B mengajukan H+1 dari pengajuan
+        $visitB = Carbon::today()->addDays(1);
         while ($visitB->isWeekend()) {
             $visitB->addDay();
         }
@@ -144,7 +144,7 @@ class H7ValidationTest extends TestCase
         $emailLower = 'user.test@domain.com';
         $emailUpper = ' USER.TEST@DOMAIN.COM ';
 
-        $visit1 = Carbon::today()->addDays(10);
+        $visit1 = Carbon::today()->addDays(5);
         while ($visit1->isWeekend()) {
             $visit1->addDay();
         }
@@ -155,20 +155,20 @@ class H7ValidationTest extends TestCase
             'status' => 'Disetujui',
         ]);
 
-        // Email UPPER + spasi mencoba H+5 dari visit1 -> HARUS GAGAL
-        $failVisit = $visit1->copy()->addDays(5)->toDateString();
+        // Email UPPER + spasi mencoba hari yang sama sebelum H+1 -> HARUS GAGAL
+        $failVisit = $visit1->toDateString();
         $resFail = $this->postJson('/api/permohonan', $this->getPayload($emailUpper, $failVisit));
         $resFail->assertStatus(422)
                 ->assertJsonValidationErrors(['tanggal_kunjungan']);
     }
 
     /**
-     * Skenario 9: Status DITOLAK tidak menjadi dasar H+7.
+     * Skenario 9: Status DITOLAK tidak menjadi dasar pembatasan riwayat.
      */
-    public function test_status_ditolak_tidak_menjadi_dasar_h7()
+    public function test_status_ditolak_tidak_menjadi_dasar_riwayat()
     {
         $email = 'ditolak@gmail.com';
-        $visitRejected = Carbon::today()->addDays(20)->toDateString();
+        $visitRejected = Carbon::today()->addDays(5)->toDateString();
 
         Permohonan::factory()->create([
             'email' => $email,
@@ -176,8 +176,8 @@ class H7ValidationTest extends TestCase
             'status' => 'Ditolak',
         ]);
 
-        // Karena ditolak, minDate email ini tetap H+7 dari pengajuan (misal H+8)
-        $visitNew = Carbon::today()->addDays(8);
+        // Karena ditolak, minDate email ini tetap H+1 dari hari ini
+        $visitNew = Carbon::today()->addDays(1);
         while ($visitNew->isWeekend()) {
             $visitNew->addDay();
         }
@@ -187,12 +187,12 @@ class H7ValidationTest extends TestCase
     }
 
     /**
-     * Skenario 10: Status REVISI tanpa kunjungan valid tidak menjadi dasar H+7.
+     * Skenario 10: Status REVISI tanpa kunjungan valid tidak menjadi dasar pembatasan riwayat.
      */
-    public function test_status_revisi_tidak_menjadi_dasar_h7()
+    public function test_status_revisi_tidak_menjadi_dasar_riwayat()
     {
         $email = 'revisi@gmail.com';
-        $visitRevisi = Carbon::today()->addDays(20)->toDateString();
+        $visitRevisi = Carbon::today()->addDays(5)->toDateString();
 
         Permohonan::factory()->create([
             'email' => $email,
@@ -200,8 +200,7 @@ class H7ValidationTest extends TestCase
             'status' => 'Revisi',
         ]);
 
-        // Status Revisi diabaikan sebagai dasar H+7 riwayat
-        $visitNew = Carbon::today()->addDays(8);
+        $visitNew = Carbon::today()->addDays(1);
         while ($visitNew->isWeekend()) {
             $visitNew->addDay();
         }
@@ -211,12 +210,12 @@ class H7ValidationTest extends TestCase
     }
 
     /**
-     * Skenario 10b: Status Pending (Ditinjau) tanpa kunjungan valid disetujui tidak menjadi dasar H+7.
+     * Skenario 10b: Status Pending (Ditinjau) tanpa kunjungan valid disetujui tidak menjadi dasar riwayat.
      */
-    public function test_status_pending_ditinjau_tidak_menjadi_dasar_h7()
+    public function test_status_pending_ditinjau_tidak_menjadi_dasar_riwayat()
     {
         $email = 'pending@gmail.com';
-        $visitPending = Carbon::today()->addDays(20)->toDateString();
+        $visitPending = Carbon::today()->addDays(5)->toDateString();
 
         Permohonan::factory()->create([
             'email' => $email,
@@ -224,8 +223,7 @@ class H7ValidationTest extends TestCase
             'status' => 'Pending',
         ]);
 
-        // Status Pending diabaikan sebagai dasar H+7 riwayat
-        $visitNew = Carbon::today()->addDays(8);
+        $visitNew = Carbon::today()->addDays(1);
         while ($visitNew->isWeekend()) {
             $visitNew->addDay();
         }
@@ -235,12 +233,12 @@ class H7ValidationTest extends TestCase
     }
 
     /**
-     * Skenario 11 & 12: Status Disetujui & Selesai menjadi dasar H+7.
+     * Skenario 11 & 12: Status Disetujui & Selesai menjadi dasar riwayat.
      */
-    public function test_status_disetujui_dan_selesai_menjadi_dasar_h7()
+    public function test_status_disetujui_dan_selesai_menjadi_dasar_riwayat()
     {
         $email = 'selesai@gmail.com';
-        $visit1 = Carbon::today()->addDays(10);
+        $visit1 = Carbon::today()->addDays(5);
         while ($visit1->isWeekend()) {
             $visit1->addDay();
         }
@@ -251,8 +249,8 @@ class H7ValidationTest extends TestCase
             'status' => 'Selesai',
         ]);
 
-        // Mencoba H+5 dari Selesai -> GAGAL
-        $failVisit = $visit1->copy()->addDays(5)->toDateString();
+        // Mencoba hari yang sama dengan kunjungan Selesai -> GAGAL
+        $failVisit = $visit1->toDateString();
         $resFail = $this->postJson('/api/permohonan', $this->getPayload($email, $failVisit));
         $resFail->assertStatus(422)
                 ->assertJsonValidationErrors(['tanggal_kunjungan']);
@@ -263,7 +261,7 @@ class H7ValidationTest extends TestCase
      */
     public function test_maksimal_dua_kunjungan_per_hari_tetap_berlaku()
     {
-        $targetDate = Carbon::today()->addDays(10);
+        $targetDate = Carbon::today()->addDays(3);
         while ($targetDate->isWeekend()) {
             $targetDate->addDay();
         }

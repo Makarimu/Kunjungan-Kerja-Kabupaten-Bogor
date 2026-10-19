@@ -1,7 +1,11 @@
 import axios from '../axios';
 
-export const login = async (username, password) => {
-  const response = await axios.post('/auth/login', { username, password });
+export const login = async (username: string, password: string, turnstileToken?: string) => {
+  const response = await axios.post('/auth/login', {
+    username,
+    password,
+    turnstile_token: turnstileToken,
+  });
   return response.data;
 };
 

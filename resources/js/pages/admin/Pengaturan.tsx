@@ -235,7 +235,7 @@ export default function Pengaturan() {
                   type="submit"
                   disabled={saving}
                   style={{
-                    background: 'linear-gradient(135deg, #0028B3 0%, #001178 100%)',
+                    background: '#0028B3',
                     color: '#fff',
                     border: 'none',
                     borderRadius: '8px',
@@ -257,14 +257,7 @@ export default function Pengaturan() {
                       Menyimpan...
                     </>
                   ) : (
-                    <>
-                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                        <polyline points="17 21 17 13 7 13 7 21" />
-                        <polyline points="7 3 7 8 15 8" />
-                      </svg>
-                      Simpan Pengaturan
-                    </>
+                    'Simpan Perubahan'
                   )}
                 </button>
               </div>

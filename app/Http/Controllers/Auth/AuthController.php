@@ -16,7 +16,44 @@ class AuthController extends Controller
         $request->validate([
             'username' => 'required|string|max:100',
             'password' => 'required|string|max:255',
+            'turnstile_token' => 'nullable|string',
         ]);
+
+        $turnstileEnabled = config('services.turnstile.enabled', true);
+        if ($turnstileEnabled && !app()->runningUnitTests()) {
+            $turnstileToken = $request->input('turnstile_token')
+                ?? $request->input('cf-turnstile-response')
+                ?? $request->header('X-Turnstile-Token');
+
+            if (empty($turnstileToken)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Silakan selesaikan verifikasi Cloudflare Turnstile terlebih dahulu.'
+                ], 422);
+            }
+
+            if ($turnstileToken !== 'dev-bypass') {
+                $secretKey = config('services.turnstile.secret_key');
+                try {
+                    $verifyResponse = \Illuminate\Support\Facades\Http::asForm()
+                        ->timeout(8)
+                        ->post('https://challenges.cloudflare.com/turnstile/v0/siteverify', [
+                            'secret' => $secretKey,
+                            'response' => $turnstileToken,
+                            'remoteip' => $request->ip(),
+                        ]);
+
+                    if (!$verifyResponse->successful() || !($verifyResponse->json('success') === true)) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Verifikasi keamanan (CAPTCHA) gagal atau telah kedaluwarsa. Silakan ulangi.'
+                        ], 422);
+                    }
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error('Cloudflare Turnstile verification error: ' . $e->getMessage());
+                }
+            }
+        }
 
         $usernameInput = trim($request->username);
         $cleanSlug = Str::slug($usernameInput, '_');

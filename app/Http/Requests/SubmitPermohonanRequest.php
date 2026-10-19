@@ -106,8 +106,10 @@ class SubmitPermohonanRequest extends FormRequest
                 }
             }
 
-            if ($tanggal && !$this->container->make(\App\Services\KalenderService::class)->isTanggalValid($tanggal, $email, $this->input('dinas_id'))) {
-                $validator->errors()->add('tanggal_kunjungan', 'Tanggal kunjungan tidak valid, batas maksimal 2 pengajuan telah tercapai, slot penuh, atau belum memenuhi aturan minimal H+7.');
+            $kalenderService = $this->container->make(\App\Services\KalenderService::class);
+            if ($tanggal && !$kalenderService->isTanggalValid($tanggal, $email, $this->input('dinas_id'))) {
+                $minHari = $kalenderService->getMinHari();
+                $validator->errors()->add('tanggal_kunjungan', "Tanggal kunjungan tidak valid, batas maksimal 2 pengajuan telah tercapai, slot penuh, atau belum memenuhi aturan minimal H+{$minHari}.");
             }
         });
     }

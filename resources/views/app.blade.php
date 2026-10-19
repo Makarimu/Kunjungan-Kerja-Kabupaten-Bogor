@@ -16,6 +16,7 @@
         apiUrl: @json(url('/api')),
         csrfToken: @json(csrf_token()),
         recaptchaSiteKey: @json(config('services.recaptcha.site_key') ?: env('VITE_RECAPTCHA_SITE_KEY')),
+        turnstileSiteKey: @json(config('services.turnstile.site_key') ?: env('VITE_CLOUDFLARE_TURNSTILE_SITE_KEY', '1x00000000000000000000AA')),
       };
     </script>
     @viteReactRefresh

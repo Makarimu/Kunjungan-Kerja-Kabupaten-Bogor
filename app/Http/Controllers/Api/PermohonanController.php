@@ -39,7 +39,8 @@ class PermohonanController extends Controller
             'blocked_details' => $availability['blocked_details'],
             'full_dates' => $availability['full'],
             'user_booked_dates' => $this->kalenderService->getUserBookedDates($email, $dinasIdInt),
-            'min_date' => $this->kalenderService->getMinimumVisitDate($email)->toDateString()
+            'min_date' => $this->kalenderService->getMinimumVisitDate($email)->toDateString(),
+            'min_hari' => $this->kalenderService->getMinHari()
         ]);
     }
 

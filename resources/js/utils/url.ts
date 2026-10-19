@@ -6,9 +6,17 @@ declare global {
       apiUrl?: string;
       csrfToken?: string;
       recaptchaSiteKey?: string;
+      turnstileSiteKey?: string;
     };
   }
 }
+
+export const getTurnstileSiteKey = (): string => {
+  if (typeof window !== 'undefined' && window.__APP_CONFIG__?.turnstileSiteKey) {
+    return window.__APP_CONFIG__.turnstileSiteKey;
+  }
+  return import.meta.env.VITE_CLOUDFLARE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA';
+};
 
 export const getRecaptchaSiteKey = (): string => {
   if (typeof window !== 'undefined' && window.__APP_CONFIG__?.recaptchaSiteKey) {

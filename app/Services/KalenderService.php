@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Permohonan;
 use App\Models\TanggalDiblokir;
+use App\Models\Setting;
 use Carbon\Carbon;
 
 class KalenderService
@@ -11,9 +12,22 @@ class KalenderService
     const MAKS_PER_HARI = 2;
     const MIN_HARI = 1;
 
+    /**
+     * Dapatkan batas minimal hari pengajuan kunjungan dari Pengaturan Super Admin
+     */
+    public function getMinHari(): int
+    {
+        $val = Setting::get('min_hari_kunjungan');
+        if ($val !== null && is_numeric($val) && (int)$val >= 1) {
+            return (int)$val;
+        }
+        return self::MIN_HARI;
+    }
+
     public function getMinimumVisitDate(?string $email = null): Carbon
     {
-        $minDate = Carbon::today()->addDays(self::MIN_HARI);
+        $minHari = $this->getMinHari();
+        $minDate = Carbon::today()->addDays($minHari);
 
         if (!empty($email)) {
             $cleanEmail = strtolower(trim($email));
@@ -22,7 +36,7 @@ class KalenderService
                 ->max('tanggal_kunjungan');
 
             if ($latestVisit) {
-                $minFromLatest = Carbon::parse($latestVisit)->startOfDay()->addDays(self::MIN_HARI);
+                $minFromLatest = Carbon::parse($latestVisit)->startOfDay()->addDays($minHari);
                 if ($minFromLatest->gt($minDate)) {
                     $minDate = $minFromLatest;
                 }

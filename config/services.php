@@ -40,4 +40,10 @@ return [
         'secret_key' => env('RECAPTCHA_SECRET_KEY', env('VITE_RECAPTCHA_SECRET_KEY', '6LcxbZktAAAAAOXzpENxut9RXX8boVWE6luiPcn6')),
     ],
 
+    'turnstile' => [
+        'site_key' => env('CLOUDFLARE_TURNSTILE_SITE_KEY', env('VITE_CLOUDFLARE_TURNSTILE_SITE_KEY', '1x00000000000000000000AA')),
+        'secret_key' => env('CLOUDFLARE_TURNSTILE_SECRET_KEY', '1x0000000000000000000000000000000AA'),
+        'enabled' => env('CLOUDFLARE_TURNSTILE_ENABLED', true),
+    ],
+
 ];

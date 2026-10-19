@@ -107,7 +107,7 @@ const BarChart = memo(function BarChart({ data }: any) {
                   style={{
                     width: '100%',
                     height: `${barHeight}px`,
-                    background: d.total > 0 ? 'linear-gradient(180deg, #1883FF 0%, #0028B3 100%)' : '#E2E8F0',
+                    background: d.total > 0 ? '#0028B3' : '#E2E8F0',
                     borderRadius: '4px 4px 0 0',
                     transition: 'height 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                     boxShadow: d.total > 0 ? '0 2px 6px rgba(0, 40, 179, 0.25)' : 'none',
@@ -442,14 +442,14 @@ export default function Dashboard() {
       </div>
 
       {/* CTA ke Halaman Permohonan */}
-      <div style={{ background: 'linear-gradient(135deg,#001178 0%,#1883FF 50%,#75C3FF 100%)', borderRadius: '18px', padding: '24px 30px', marginTop: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px', boxShadow: '0 8px 24px rgba(0,17,120,0.16)' }}>
+      <div style={{ background: '#0028B3', borderRadius: '16px', padding: '24px 30px', marginTop: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px', boxShadow: '0 4px 16px rgba(0,40,179,0.14)' }}>
         <div style={{ color: 'white' }}>
           <div style={{ fontSize: '16px', fontWeight: '700', letterSpacing: '-0.2px' }}>Lihat semua permohonan</div>
           <div style={{ fontSize: '13px', opacity: 0.9, marginTop: '4px' }}>Proses, filter, dan kelola seluruh permohonan kunjungan kerja</div>
         </div>
         <button onClick={() => navigate('/admin/permohonan')}
           className="btn"
-          style={{ background: 'white', color: '#001178', border: 'none', borderRadius: '8px', padding: '11px 22px', fontSize: '13.5px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.12)', transition: 'transform 0.2s' }}>
+          style={{ background: 'white', color: '#0028B3', border: 'none', borderRadius: '8px', padding: '11px 22px', fontSize: '13.5px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.12)', transition: 'transform 0.2s' }}>
           Buka Daftar Permohonan →
         </button>
       </div>
