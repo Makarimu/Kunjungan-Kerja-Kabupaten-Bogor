@@ -76,8 +76,12 @@ const Calendar = memo(function Calendar({
     return d;
   });
 
+  // Popup hover/pin — HANYA untuk blocked
   const [pinnedDate, setPinnedDate] = useState<string | null>(null);
   const [hoveredDate, setHoveredDate] = useState<string | null>(null);
+
+  // Panel bawah kalender — update saat tanggal diklik
+  const [selectedPanelDate, setSelectedPanelDate] = useState<string | null>(null);
 
   useEffect(() => {
     const handleDocClick = (e: MouseEvent) => {
@@ -144,6 +148,23 @@ const Calendar = memo(function Calendar({
     return 'available';
   }, [userBookedDates, blockedDates, fullDates, busyDates, minDate, today]);
 
+  // Computed data untuk panel bawah kalender
+  const panelInfo = useMemo(() => {
+    if (!selectedPanelDate) return null;
+    const dow = new Date(selectedPanelDate + 'T00:00:00').getDay();
+    const cls = getDayClass(selectedPanelDate, dow);
+    const detail = blockedDetails[selectedPanelDate];
+    const visits = approvedVisits[selectedPanelDate] || [];
+    return { dateStr: selectedPanelDate, cls, detail, visits };
+  }, [selectedPanelDate, getDayClass, blockedDetails, approvedVisits]);
+
+  const handleDayClick = useCallback((dateStr: string, cls: string) => {
+    setSelectedPanelDate(dateStr);
+    if (cls === 'available') {
+      onSelect(dateStr);
+    }
+  }, [onSelect]);
+
   return (
     <div className="card" style={{ overflow: 'visible' }}>
       <div className="card-header cal-card-header">
@@ -166,7 +187,8 @@ const Calendar = memo(function Calendar({
             const isToday = dateStr === todayStr;
             const detail = blockedDetails[dateStr];
             const visitsOnDay = approvedVisits[dateStr] || [];
-            const isPopupOpen = (pinnedDate === dateStr) || (!pinnedDate && hoveredDate === dateStr);
+            // Popup melayang HANYA untuk blocked
+            const isPopupOpen = cls === 'blocked' && ((pinnedDate === dateStr) || (!pinnedDate && hoveredDate === dateStr));
             return (
               <CalendarDay
                 key={dateStr}
@@ -179,7 +201,7 @@ const Calendar = memo(function Calendar({
                 isSelected={isSelected}
                 isToday={isToday}
                 isPopupOpen={isPopupOpen}
-                onSelect={onSelect}
+                onDayClick={handleDayClick}
                 onHover={setHoveredDate}
                 onTogglePin={setPinnedDate}
                 onClosePopup={handleClosePopup}
@@ -216,7 +238,7 @@ const Calendar = memo(function Calendar({
           </div>
           <div className="legend-item">
             <div className="legend-dot" style={LEGEND_DOT_STYLE_BLOCKED} />
-            <span>Diblokir oleh Dinas</span>
+            <span>Diblokir oleh Dinas (hover untuk detail)</span>
           </div>
           <div className="legend-item">
             <div className="legend-dot" style={LEGEND_DOT_STYLE_TERPAKAI} />
@@ -227,6 +249,181 @@ const Calendar = memo(function Calendar({
             <span>Tidak Tersedia</span>
           </div>
         </div>
+
+        {/* ===== PANEL INFO BAWAH KALENDER ===== */}
+        <div style={{
+          marginTop: '14px',
+          borderRadius: '12px',
+          overflow: 'hidden',
+          border: panelInfo ? '1px solid #E2E8F0' : '1px dashed #CBD5E1',
+          transition: 'all 0.2s ease',
+          background: panelInfo ? '#FFFFFF' : '#F8FAFC',
+        }}>
+          {!panelInfo ? (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '14px 16px',
+              color: '#94A3B8',
+            }}>
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
+              </svg>
+              <span style={{ fontSize: '13px', fontWeight: '500' }}>Klik pada tanggal untuk melihat informasi kuota &amp; tamu</span>
+            </div>
+          ) : (
+            <>
+              {/* Header panel */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 14px',
+                background: panelInfo.cls === 'blocked' ? '#F8FAFC' : panelInfo.cls === 'busy' ? '#FEF2F2' : panelInfo.cls === 'user-booked' ? '#FFFBEB' : panelInfo.cls === 'available' ? '#F0FDF4' : '#F8FAFC',
+                borderBottom: '1px solid #E2E8F0',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#0028B3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
+                  </svg>
+                  <span style={{ fontSize: '13px', fontWeight: '700', color: '#1E293B' }}>
+                    {formatDisplayDate(panelInfo.dateStr)}
+                  </span>
+                </div>
+                <span style={{
+                  fontSize: '11px',
+                  fontWeight: '700',
+                  padding: '3px 9px',
+                  borderRadius: '20px',
+                  ...(panelInfo.cls === 'blocked'
+                    ? { background: '#F1F5F9', color: '#64748B', border: '1px solid #CBD5E1' }
+                    : panelInfo.cls === 'busy'
+                    ? { background: '#FEE2E2', color: '#DC2626', border: '1px solid #FECACA' }
+                    : panelInfo.cls === 'user-booked'
+                    ? { background: '#FEF3C7', color: '#B45309', border: '1px solid #FDE68A' }
+                    : panelInfo.cls === 'available'
+                    ? { background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC' }
+                    : panelInfo.cls === 'past' || panelInfo.cls === 'weekend' || panelInfo.cls === 'too-soon'
+                    ? { background: '#F1F5F9', color: '#94A3B8', border: '1px solid #E2E8F0' }
+                    : { background: '#F1F5F9', color: '#64748B', border: '1px solid #E2E8F0' }
+                  )
+                }}>
+                  {panelInfo.cls === 'blocked' ? '🔒 Diblokir'
+                    : panelInfo.cls === 'busy' ? '🔴 Penuh'
+                    : panelInfo.cls === 'user-booked' ? '⚠️ Sudah Diajukan'
+                    : panelInfo.cls === 'available' ? '✅ Tersedia'
+                    : panelInfo.cls === 'past' ? 'Sudah Lewat'
+                    : panelInfo.cls === 'weekend' ? 'Akhir Pekan'
+                    : panelInfo.cls === 'too-soon' ? 'Terlalu Dekat'
+                    : 'Tidak Tersedia'}
+                </span>
+              </div>
+
+              {/* Body panel */}
+              <div style={{ padding: '12px 14px' }}>
+                {panelInfo.cls === 'blocked' && (
+                  <div style={{
+                    background: '#F8FAFC',
+                    border: '1px solid #E2E8F0',
+                    borderLeft: '3.5px solid #64748B',
+                    borderRadius: '8px',
+                    padding: '10px 12px',
+                  }}>
+                    <div style={{ fontSize: '10.5px', color: '#64748B', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Keterangan Blokir:</div>
+                    <div style={{ fontSize: '13px', color: '#1E293B', fontWeight: '600', lineHeight: '1.5', wordBreak: 'break-word' }}>
+                      "{panelInfo.detail?.keterangan || 'Agenda internal dinas'}"
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#64748B', marginTop: '6px' }}>Oleh: <strong style={{ color: '#475569' }}>{panelInfo.detail?.diblokir_oleh || 'Admin Dinas'}</strong></div>
+                  </div>
+                )}
+
+                {panelInfo.cls === 'busy' && (
+                  <>
+                    <div style={{ fontSize: '12.5px', color: '#991B1B', marginBottom: panelInfo.visits.length > 0 ? '10px' : '0', lineHeight: '1.5' }}>
+                      Kuota kunjungan pada tanggal ini sudah penuh (maks. 2 rombongan/hari). Silakan pilih tanggal lain.
+                    </div>
+                    {panelInfo.visits.length > 0 && (
+                      <div>
+                        <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: '6px' }}>Tamu Terjadwal (ACC):</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          {panelInfo.visits.map((visit: any, i: number) => (
+                            <div key={i} style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderLeft: '3.5px solid #DC2626', borderRadius: '8px', padding: '8px 10px' }}>
+                              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '6px', marginBottom: '3px' }}>
+                                <span style={{ fontSize: '12.5px', fontWeight: '800', color: '#991B1B', lineHeight: '1.3' }}>{visit.instansi}</span>
+                                {visit.jam_penerimaan && <span style={{ fontSize: '10px', fontWeight: '700', color: '#B91C1C', background: '#FEE2E2', padding: '2px 6px', borderRadius: '5px', flexShrink: 0 }}>{visit.jam_penerimaan}</span>}
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#475569', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                <span>Ketua: <strong style={{ color: '#1E293B' }}>{visit.nama_tamu}</strong></span>
+                                {visit.jumlah_peserta > 0 && <span>• <strong>{visit.jumlah_peserta} Orang</strong></span>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {panelInfo.cls === 'user-booked' && (
+                  <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderLeft: '3.5px solid #F59E0B', borderRadius: '8px', padding: '10px 12px' }}>
+                    <div style={{ fontSize: '12.5px', color: '#92400E', lineHeight: '1.5' }}>
+                      Email Anda sudah mencapai batas maksimal 2 pengajuan kunjungan untuk dinas ini pada tanggal tersebut.
+                    </div>
+                  </div>
+                )}
+
+                {panelInfo.cls === 'available' && (
+                  <>
+                    {panelInfo.visits.length > 0 ? (
+                      <div>
+                        <div style={{ fontSize: '12.5px', color: '#15803D', marginBottom: '10px', fontWeight: '600' }}>
+                          Tanggal tersedia — sisa {Math.max(1, 2 - panelInfo.visits.length)} kuota. Tamu yang sudah di-ACC:
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          {panelInfo.visits.map((visit: any, i: number) => (
+                            <div key={i} style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderLeft: '3.5px solid #22C55E', borderRadius: '8px', padding: '8px 10px' }}>
+                              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '6px', marginBottom: '3px' }}>
+                                <span style={{ fontSize: '12.5px', fontWeight: '800', color: '#15803D', lineHeight: '1.3' }}>{visit.instansi}</span>
+                                {visit.jam_penerimaan && <span style={{ fontSize: '10px', fontWeight: '700', color: '#16A34A', background: '#DCFCE7', padding: '2px 6px', borderRadius: '5px', flexShrink: 0 }}>{visit.jam_penerimaan}</span>}
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#475569', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                <span>Ketua: <strong style={{ color: '#1E293B' }}>{visit.nama_tamu}</strong></span>
+                                {visit.jumlah_peserta > 0 && <span>• <strong>{visit.jumlah_peserta} Orang</strong></span>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#15803D' }}>
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                        <span style={{ fontSize: '13px', fontWeight: '600' }}>Tanggal ini tersedia. Belum ada tamu terjadwal.</span>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {(panelInfo.cls === 'past' || panelInfo.cls === 'weekend' || panelInfo.cls === 'too-soon') && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#94A3B8' }}>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+                    </svg>
+                    <span style={{ fontSize: '13px', fontWeight: '500' }}>
+                      {panelInfo.cls === 'past' ? 'Tanggal sudah lewat, tidak dapat dipilih.'
+                        : panelInfo.cls === 'weekend' ? 'Kunjungan kerja tidak tersedia di akhir pekan.'
+                        : 'Terlalu dekat dari hari ini. Pengajuan minimal H+1 hari kerja.'}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+        {/* ===== AKHIR PANEL INFO ===== */}
+
       </div>
     </div>
   );
@@ -243,37 +440,41 @@ const CalendarDay = memo(function CalendarDay({
   isSelected,
   isToday,
   isPopupOpen,
-  onSelect,
+  onDayClick,
   onHover,
   onTogglePin,
   onClosePopup
 }: any) {
   const hasApprovedVisits = Array.isArray(visitsOnDay) && visitsOnDay.length > 0;
-  const isInteractive = cls === 'blocked' || cls === 'busy' || cls === 'user-booked' || hasApprovedVisits;
+  // Hari yang bisa diklik untuk panel info (semua kecuali empty)
+  const isClickable = cls !== 'empty';
+  // Hover/pin popup hanya untuk blocked
+  const isBlockedInteractive = cls === 'blocked';
 
   const handleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    if (cls === 'available') {
-      onSelect(dateStr);
-      if (hasApprovedVisits) {
-        onTogglePin((prev: string | null) => (prev === dateStr ? null : dateStr));
-      }
-    } else if (isInteractive) {
+    // Update panel bawah untuk semua tanggal
+    if (isClickable) {
+      onDayClick(dateStr, cls);
+    }
+    // Toggle popup hanya untuk blocked
+    if (isBlockedInteractive) {
       onTogglePin((prev: string | null) => (prev === dateStr ? null : dateStr));
     }
-  }, [cls, dateStr, isInteractive, hasApprovedVisits, onSelect, onTogglePin]);
+  }, [cls, dateStr, isClickable, isBlockedInteractive, onDayClick, onTogglePin]);
 
+  // Hover hanya untuk blocked
   const handleMouseEnter = useCallback(() => {
-    if (isInteractive) {
+    if (isBlockedInteractive) {
       onHover(dateStr);
     }
-  }, [isInteractive, onHover, dateStr]);
+  }, [isBlockedInteractive, onHover, dateStr]);
 
   const handleMouseLeave = useCallback(() => {
-    if (isInteractive) {
+    if (isBlockedInteractive) {
       onHover((prev: string | null) => (prev === dateStr ? null : prev));
     }
-  }, [isInteractive, onHover, dateStr]);
+  }, [isBlockedInteractive, onHover, dateStr]);
 
   return (
     <div
@@ -319,7 +520,8 @@ const CalendarDay = memo(function CalendarDay({
         </span>
       )}
 
-      {isPopupOpen && (
+      {/* Popup melayang — HANYA untuk blocked */}
+      {isPopupOpen && cls === 'blocked' && (
         <div
           className="cal-day-popup-anchor"
           style={{
