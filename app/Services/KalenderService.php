@@ -140,7 +140,8 @@ class KalenderService
                 'all_busy' => [],
                 'blocked' => [],
                 'blocked_details' => (object)[],
-                'full' => []
+                'full' => [],
+                'approved_visits' => (object)[],
             ];
         }
 
@@ -176,11 +177,37 @@ class KalenderService
             ->values()
             ->toArray();
 
+        // Ambil permohonan yang sudah di-ACC (Disetujui / Selesai) untuk dinas terkait
+        $approvedVisitsModels = Permohonan::whereDate('tanggal_kunjungan', '>=', Carbon::today())
+            ->whereIn('status', ['Disetujui', 'Selesai'])
+            ->where('dinas_id', $dinasId)
+            ->orderBy('tanggal_kunjungan', 'asc')
+            ->orderBy('jam_penerimaan', 'asc')
+            ->get();
+
+        $approvedVisits = [];
+        foreach ($approvedVisitsModels as $p) {
+            if ($p->tanggal_kunjungan) {
+                $tgl = Carbon::parse($p->tanggal_kunjungan)->format('Y-m-d');
+                if (!isset($approvedVisits[$tgl])) {
+                    $approvedVisits[$tgl] = [];
+                }
+                $approvedVisits[$tgl][] = [
+                    'id' => $p->id,
+                    'instansi' => $p->instansi,
+                    'nama_tamu' => $p->nama_ketua_rombongan ?: $p->nama_pic,
+                    'jumlah_peserta' => (int) ($p->jumlah_peserta ?: 0),
+                    'jam_penerimaan' => $p->jam_penerimaan ? Carbon::parse($p->jam_penerimaan)->format('H:i') . ' WIB' : null,
+                ];
+            }
+        }
+
         return [
             'all_busy' => array_values(array_unique(array_merge($diblokir, $penuh))),
             'blocked' => array_values(array_unique($diblokir)),
             'blocked_details' => $blockedDetails,
             'full' => array_values(array_unique($penuh)),
+            'approved_visits' => $approvedVisits,
         ];
     }
 

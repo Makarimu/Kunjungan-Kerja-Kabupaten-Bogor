@@ -47,6 +47,7 @@ const Calendar = memo(function Calendar({
   blockedDates = [],
   blockedDetails = {},
   fullDates = [],
+  approvedVisits = {},
   selectedDate,
   onSelect,
   minDateStr,
@@ -164,6 +165,7 @@ const Calendar = memo(function Calendar({
             const isSelected = selectedDate === dateStr;
             const isToday = dateStr === todayStr;
             const detail = blockedDetails[dateStr];
+            const visitsOnDay = approvedVisits[dateStr] || [];
             const isPopupOpen = (pinnedDate === dateStr) || (!pinnedDate && hoveredDate === dateStr);
             return (
               <CalendarDay
@@ -173,6 +175,7 @@ const Calendar = memo(function Calendar({
                 dow={dow}
                 cls={cls}
                 detail={detail}
+                visitsOnDay={visitsOnDay}
                 isSelected={isSelected}
                 isToday={isToday}
                 isPopupOpen={isPopupOpen}
@@ -188,6 +191,24 @@ const Calendar = memo(function Calendar({
           <div className="legend-item">
             <div className="legend-dot" style={LEGEND_DOT_STYLE_TERSEDIA} />
             <span>Tersedia</span>
+          </div>
+          <div className="legend-item">
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '1px 5px',
+              borderRadius: '4px',
+              background: '#EFF6FF',
+              border: '1px solid #BFDBFE',
+              color: '#0028B3',
+              fontSize: '9px',
+              fontWeight: '800',
+              lineHeight: '1.1'
+            }}>
+              ACC
+            </span>
+            <span>Tamu Disetujui</span>
           </div>
           <div className="legend-item">
             <div className="legend-dot" style={LEGEND_DOT_STYLE_USER_BOOKED} />
@@ -218,6 +239,7 @@ const CalendarDay = memo(function CalendarDay({
   dow,
   cls,
   detail,
+  visitsOnDay = [],
   isSelected,
   isToday,
   isPopupOpen,
@@ -226,16 +248,20 @@ const CalendarDay = memo(function CalendarDay({
   onTogglePin,
   onClosePopup
 }: any) {
-  const isInteractive = cls === 'blocked' || cls === 'busy' || cls === 'user-booked';
+  const hasApprovedVisits = Array.isArray(visitsOnDay) && visitsOnDay.length > 0;
+  const isInteractive = cls === 'blocked' || cls === 'busy' || cls === 'user-booked' || hasApprovedVisits;
 
   const handleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     if (cls === 'available') {
       onSelect(dateStr);
+      if (hasApprovedVisits) {
+        onTogglePin((prev: string | null) => (prev === dateStr ? null : dateStr));
+      }
     } else if (isInteractive) {
       onTogglePin((prev: string | null) => (prev === dateStr ? null : dateStr));
     }
-  }, [cls, dateStr, isInteractive, onSelect, onTogglePin]);
+  }, [cls, dateStr, isInteractive, hasApprovedVisits, onSelect, onTogglePin]);
 
   const handleMouseEnter = useCallback(() => {
     if (isInteractive) {
@@ -251,13 +277,47 @@ const CalendarDay = memo(function CalendarDay({
 
   return (
     <div
-      className={`cal-day ${cls}${isSelected && cls !== 'user-booked' ? ' selected' : ''}${isToday ? ' today' : ''}`}
+      className={`cal-day ${cls}${isSelected && cls !== 'user-booked' ? ' selected' : ''}${isToday ? ' today' : ''}${hasApprovedVisits ? ' has-guest' : ''}`}
       onClick={handleClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      style={{ position: 'relative' }}
+      style={{
+        position: 'relative',
+        zIndex: isPopupOpen ? 200 : (isSelected ? 3 : 1),
+      }}
     >
-      {day}
+      <span style={{ position: 'relative', ...(hasApprovedVisits ? { transform: 'translateY(-4px)' } : {}) }}>
+        {day}
+      </span>
+
+      {hasApprovedVisits && (
+        <span
+          className="cal-day-guest-badge"
+          title={`${visitsOnDay.length} Rombongan Tamu Disetujui (ACC)`}
+          style={{
+            position: 'absolute',
+            bottom: '2px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '1.5px',
+            fontSize: '8px',
+            fontWeight: '800',
+            lineHeight: '1',
+            padding: '1px 3.5px',
+            borderRadius: '4px',
+            background: cls === 'busy' ? '#FEE2E2' : '#EFF6FF',
+            color: cls === 'busy' ? '#B91C1C' : '#0028B3',
+            border: `1px solid ${cls === 'busy' ? '#FECACA' : '#BFDBFE'}`,
+            pointerEvents: 'none',
+            whiteSpace: 'nowrap',
+            zIndex: 2,
+          }}
+        >
+          {visitsOnDay.length} ACC
+        </span>
+      )}
 
       {isPopupOpen && (
         <div
@@ -265,7 +325,7 @@ const CalendarDay = memo(function CalendarDay({
           style={{
             position: 'absolute',
             bottom: 'calc(100% + 8px)',
-            zIndex: 150,
+            zIndex: 250,
             ...(dow <= 1 ? { left: '0' } : dow >= 5 ? { right: '0' } : { left: '50%', transform: 'translateX(-50%)' }),
           }}
           onClick={(e) => e.stopPropagation()}
@@ -368,7 +428,7 @@ const CalendarDay = memo(function CalendarDay({
                       </svg>
                     </span>
                     <span style={{ fontSize: '12px', fontWeight: '800', color: '#B91C1C', letterSpacing: '-0.2px' }}>
-                      Jadwal Penuh
+                      Jadwal Penuh {visitsOnDay.length > 0 ? `(${visitsOnDay.length}/2 ACC)` : ''}
                     </span>
                   </div>
                   <button
@@ -401,20 +461,58 @@ const CalendarDay = memo(function CalendarDay({
                   <span>{formatDisplayDate(dateStr)}</span>
                 </div>
 
-                <div style={{
-                  background: '#FEF2F2',
-                  border: '1px solid #FECACA',
-                  borderLeft: '3.5px solid #EF4444',
-                  borderRadius: '7px',
-                  padding: '8px 10px',
-                  marginBottom: '8px'
-                }}>
-                  <div style={{ fontSize: '12px', color: '#991B1B', lineHeight: '1.45' }}>
-                    Kuota kunjungan kerja pada tanggal ini sudah penuh (maksimal 2 rombongan per hari). Silakan pilih tanggal lain.
+                {visitsOnDay.length > 0 ? (
+                  <div style={{ marginBottom: '8px' }}>
+                    <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: '5px' }}>
+                      Tamu Terjadwal (ACC):
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', maxHeight: '180px', overflowY: 'auto' }}>
+                      {visitsOnDay.map((visit: any, vIdx: number) => (
+                        <div key={vIdx} style={{
+                          background: '#FEF2F2',
+                          border: '1px solid #FECACA',
+                          borderLeft: '3.5px solid #DC2626',
+                          borderRadius: '6px',
+                          padding: '6px 8px',
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '4px', marginBottom: '2px' }}>
+                            <span style={{ fontSize: '11.5px', fontWeight: '800', color: '#991B1B', lineHeight: '1.3' }}>
+                              {visit.instansi}
+                            </span>
+                            {visit.jam_penerimaan && (
+                              <span style={{ fontSize: '9.5px', fontWeight: '700', color: '#B91C1C', background: '#FEE2E2', padding: '1px 4px', borderRadius: '4px', flexShrink: 0 }}>
+                                {visit.jam_penerimaan}
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: '10.5px', color: '#475569', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                            <span>Ketua: <strong style={{ color: '#1E293B' }}>{visit.nama_tamu}</strong></span>
+                            {visit.jumlah_peserta > 0 && <span>• <strong>{visit.jumlah_peserta} Orang</strong></span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
+                ) : (
+                  <div style={{
+                    background: '#FEF2F2',
+                    border: '1px solid #FECACA',
+                    borderLeft: '3.5px solid #EF4444',
+                    borderRadius: '7px',
+                    padding: '8px 10px',
+                    marginBottom: '8px'
+                  }}>
+                    <div style={{ fontSize: '12px', color: '#991B1B', lineHeight: '1.45' }}>
+                      Kuota kunjungan kerja pada tanggal ini sudah penuh (maksimal 2 rombongan per hari). Silakan pilih tanggal lain.
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ fontSize: '10.5px', color: '#DC2626', fontWeight: '600', textAlign: 'right' }}>
+                  Tidak Tersedia
                 </div>
               </>
-            ) : (
+            ) : cls === 'user-booked' ? (
               <>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -480,7 +578,100 @@ const CalendarDay = memo(function CalendarDay({
                   </div>
                 </div>
               </>
-            )}
+            ) : hasApprovedVisits ? (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '22px',
+                      height: '22px',
+                      borderRadius: '7px',
+                      background: '#EFF6FF',
+                      color: '#0028B3',
+                      flexShrink: 0
+                    }}>
+                      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                      </svg>
+                    </span>
+                    <span style={{ fontSize: '12px', fontWeight: '800', color: '#0028B3', letterSpacing: '-0.2px' }}>
+                      Tersedia (Sisa {Math.max(1, 2 - visitsOnDay.length)} Kuota)
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={onClosePopup}
+                    style={{
+                      background: '#F1F5F9',
+                      border: 'none',
+                      color: '#64748B',
+                      cursor: 'pointer',
+                      padding: '3px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: '5px'
+                    }}
+                    title="Tutup Popup"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div style={{ fontSize: '12px', fontWeight: '700', color: '#1E293B', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#0028B3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
+                  </svg>
+                  <span>{formatDisplayDate(dateStr)}</span>
+                </div>
+
+                <div style={{ marginBottom: '8px' }}>
+                  <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: '5px' }}>
+                    Tamu yang Sudah Disetujui (ACC):
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', maxHeight: '180px', overflowY: 'auto' }}>
+                    {visitsOnDay.map((visit: any, vIdx: number) => (
+                      <div key={vIdx} style={{
+                        background: '#F8FAFC',
+                        border: '1px solid #E2E8F0',
+                        borderLeft: '3.5px solid #0028B3',
+                        borderRadius: '6px',
+                        padding: '6px 8px',
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '4px', marginBottom: '2px' }}>
+                          <span style={{ fontSize: '11.5px', fontWeight: '800', color: '#001178', lineHeight: '1.3' }}>
+                            {visit.instansi}
+                          </span>
+                          {visit.jam_penerimaan && (
+                            <span style={{ fontSize: '9.5px', fontWeight: '700', color: '#0028B3', background: '#DBEAFE', padding: '1px 4px', borderRadius: '4px', flexShrink: 0 }}>
+                              {visit.jam_penerimaan}
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '10.5px', color: '#475569', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <span>Ketua: <strong style={{ color: '#1E293B' }}>{visit.nama_tamu}</strong></span>
+                          {visit.jumlah_peserta > 0 && <span>• <strong>{visit.jumlah_peserta} Orang</strong></span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '10.5px' }}>
+                  <span style={{ color: '#059669', fontWeight: '600' }}>✓ Masih Tersedia</span>
+                  <span style={{ color: '#0028B3', fontWeight: '700' }}>Klik untuk memilih</span>
+                </div>
+              </>
+            ) : null}
             <div className={`cal-popup-arrow arrow-${dow <= 1 ? 'left' : dow >= 5 ? 'right' : 'center'}`} />
           </div>
         </div>
@@ -870,6 +1061,7 @@ export default function Permohonan() {
   const [blockedDates, setBlockedDates] = useState<string[]>([]);
   const [blockedDetails, setBlockedDetails] = useState<Record<string, any>>({});
   const [fullDates, setFullDates] = useState<string[]>([]);
+  const [approvedVisits, setApprovedVisits] = useState<Record<string, any[]>>({});
   const [minDateStr, setMinDateStr] = useState<string>('');
   const [minHari, setMinHari] = useState<number>(1);
   const [userBookedDates, setUserBookedDates] = useState<string[]>([]);
@@ -884,7 +1076,7 @@ export default function Permohonan() {
           setMinHari(Number(res.data.data.min_hari_kunjungan));
         }
       })
-      .catch(() => {});
+      .catch(() => { });
 
     api.get('/dinas')
       .then(res => {
@@ -907,6 +1099,7 @@ export default function Permohonan() {
       setBlockedDates([]);
       setBlockedDetails({});
       setFullDates([]);
+      setApprovedVisits({});
       return;
     }
 
@@ -939,11 +1132,13 @@ export default function Permohonan() {
         const blocked = res.data.blocked_dates || [];
         const details = res.data.blocked_details || {};
         const full = res.data.full_dates || [];
+        const approved = res.data.approved_visits || {};
 
         setBusyDates(busy);
         setBlockedDates(blocked);
         setBlockedDetails(details);
         setFullDates(full);
+        setApprovedVisits(approved);
 
         // Jika tanggal yang sempat dipilih ternyata masuk tanggal terpakai/diblokir pada dinas baru, batalkan pilihan
         setSelectedDate(prev => (prev && busy.includes(prev) ? '' : prev));
@@ -1230,11 +1425,12 @@ export default function Permohonan() {
             {/* key berubah saat userBookedDates berubah isinya → memaksa remount Calendar */}
             <div id="calendarColumn">
               <Calendar
-                key={userBookedDates.join(',') + '_' + blockedDates.join(',') + '_' + fullDates.join(',')}
+                key={userBookedDates.join(',') + '_' + blockedDates.join(',') + '_' + fullDates.join(',') + '_' + Object.keys(approvedVisits).join(',')}
                 busyDates={busyDates}
                 blockedDates={blockedDates}
                 blockedDetails={blockedDetails}
                 fullDates={fullDates}
+                approvedVisits={approvedVisits}
                 selectedDate={selectedDate}
                 onSelect={handleDateSelect}
                 minDateStr={minDateStr}
@@ -1444,6 +1640,71 @@ export default function Permohonan() {
                           </div>
                         )}
                       </div>
+
+                      {/* Banner Info: Tamu yang Sudah di-ACC pada Tanggal Terpilih */}
+                      {selectedDate && approvedVisits[selectedDate] && approvedVisits[selectedDate].length > 0 && (
+                        <div
+                          style={{
+                            marginTop: '12px',
+                            marginBottom: '16px',
+                            padding: '12px 14px',
+                            borderRadius: '10px',
+                            background: '#F0F9FF',
+                            border: '1px solid #BAE6FD',
+                            borderLeft: '4px solid #0284C7',
+                            animation: 'fadeIn 0.2s ease',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '8px', color: '#0369A1', fontSize: '13px', fontWeight: '700' }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                              <circle cx="9" cy="7" r="4" />
+                              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                            </svg>
+                            <span>Tamu Terjadwal di Tanggal Ini ({approvedVisits[selectedDate].length}/2 Kuota Terisi):</span>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            {approvedVisits[selectedDate].map((t: any, idx: number) => (
+                              <div
+                                key={idx}
+                                style={{
+                                  background: '#FFFFFF',
+                                  border: '1px solid #E0F2FE',
+                                  borderRadius: '8px',
+                                  padding: '8px 12px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  flexWrap: 'wrap',
+                                  gap: '6px',
+                                }}
+                              >
+                                <div>
+                                  <div style={{ fontWeight: '800', color: '#0C4A6E', fontSize: '12.5px' }}>
+                                    {t.instansi}
+                                  </div>
+                                  <div style={{ color: '#475569', fontSize: '11.5px', marginTop: '1px' }}>
+                                    Ketua: <strong>{t.nama_tamu}</strong>
+                                  </div>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  {t.jumlah_peserta > 0 && (
+                                    <span style={{ fontSize: '11px', background: '#F1F5F9', color: '#334155', padding: '2px 7px', borderRadius: '5px', fontWeight: '600' }}>
+                                      {t.jumlah_peserta} Orang
+                                    </span>
+                                  )}
+                                  {t.jam_penerimaan && (
+                                    <span style={{ fontSize: '11px', background: '#E0F2FE', color: '#0284C7', padding: '2px 7px', borderRadius: '5px', fontWeight: '700' }}>
+                                      {t.jam_penerimaan}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       <div className="form-title">Data Pemohon</div>
                       <div className="form-grid">

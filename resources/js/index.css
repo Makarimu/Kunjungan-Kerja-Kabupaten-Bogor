@@ -1165,12 +1165,14 @@ body {
 /* Calendar Day Floating Popover */
 .cal-day-popup-anchor {
   pointer-events: auto;
+  z-index: 200;
 }
 
 .cal-day-popup-card {
   position: relative;
   width: 235px;
-  background: #FFFFFF;
+  background-color: #FFFFFF !important;
+  background: #FFFFFF !important;
   border-radius: 12px;
   padding: 12px 14px;
   box-shadow: 0 12px 32px -4px rgba(15, 23, 42, 0.16), 0 4px 12px rgba(0, 0, 0, 0.08);
@@ -1179,6 +1181,7 @@ body {
   cursor: default;
   animation: calPopupCardIn 0.16s cubic-bezier(0.16, 1, 0.3, 1);
   font-family: inherit;
+  z-index: 201;
 }
 
 @keyframes calPopupCardIn {
