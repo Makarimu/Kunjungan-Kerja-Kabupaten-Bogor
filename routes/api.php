@@ -119,7 +119,10 @@ Route::middleware(['auth:sanctum', 'throttle:admin-api'])->group(function () {
         Route::get('/reviews', [ReviewAdminController::class, 'index']);
         Route::post('/reviews/{id}/proses', [ReviewAdminController::class, 'proses']);
 
-        // Master Data Dinas
+        // Master Data Dinas & Pengaturan Kuota
+        Route::get('/dinas/kuota', [DinasController::class, 'getKuotaList']);
+        Route::put('/dinas/kuota', [DinasController::class, 'updateKuotaBulk']);
+        Route::put('/dinas/{id}/kuota', [DinasController::class, 'updateKuotaSingle']);
         Route::get('/dinas', [DinasController::class, 'index']);
         Route::post('/dinas', [DinasController::class, 'store']);
         Route::put('/dinas/{id}', [DinasController::class, 'update']);

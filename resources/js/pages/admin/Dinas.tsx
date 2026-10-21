@@ -8,6 +8,7 @@ interface DinasData {
   nama: string;
   singkatan: string;
   nomor_telepon: string | null;
+  kuota_per_hari: number | null;
   latitude: number | null;
   longitude: number | null;
 }
@@ -16,6 +17,7 @@ const EMPTY_FORM = {
   nama: '',
   singkatan: '',
   nomor_telepon: '',
+  kuota_per_hari: '2',
   latitude: '',
   longitude: '',
 };
@@ -87,6 +89,7 @@ export default function Dinas() {
       nama: item.nama,
       singkatan: item.singkatan,
       nomor_telepon: item.nomor_telepon || '',
+      kuota_per_hari: (item.kuota_per_hari ?? 2).toString(),
       latitude: item.latitude !== null ? item.latitude.toString() : '',
       longitude: item.longitude !== null ? item.longitude.toString() : '',
     });
@@ -108,6 +111,7 @@ export default function Dinas() {
         nama: form.nama,
         singkatan: form.singkatan,
         nomor_telepon: form.nomor_telepon || null,
+        kuota_per_hari: form.kuota_per_hari ? parseInt(form.kuota_per_hari, 10) : 2,
         latitude: form.latitude ? parseFloat(form.latitude) : null,
         longitude: form.longitude ? parseFloat(form.longitude) : null,
       };
@@ -190,11 +194,23 @@ export default function Dinas() {
             </span>
           )}
           {isSuperAdmin && (
-            <button onClick={() => window.dispatchEvent(new Event('open-pengaturan-modal'))}
-              style={{display:'flex',alignItems:'center',gap:'8px',padding:'10px 18px',minHeight:'42px',border:'1px solid #C5DBFF',borderRadius:'8px',background:'white',color:'#001178',cursor:'pointer',fontSize:'13px',fontWeight:'700',fontFamily:'inherit',boxShadow:'0 2px 8px rgba(0,17,120,0.06)',transition:'all 0.2s'}}>
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
-              Pengaturan Publik
-            </button>
+            <>
+              <button onClick={() => window.dispatchEvent(new Event('open-kuota-modal'))}
+                style={{display:'flex',alignItems:'center',gap:'8px',padding:'10px 18px',minHeight:'42px',border:'1px solid #C5DBFF',borderRadius:'8px',background:'white',color:'#001178',cursor:'pointer',fontSize:'13px',fontWeight:'700',fontFamily:'inherit',boxShadow:'0 2px 8px rgba(0,17,120,0.06)',transition:'all 0.2s'}}>
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+                Pengaturan Kuota Kunjungan
+              </button>
+              <button onClick={() => window.dispatchEvent(new Event('open-pengaturan-modal'))}
+                style={{display:'flex',alignItems:'center',gap:'8px',padding:'10px 18px',minHeight:'42px',border:'1px solid #C5DBFF',borderRadius:'8px',background:'white',color:'#001178',cursor:'pointer',fontSize:'13px',fontWeight:'700',fontFamily:'inherit',boxShadow:'0 2px 8px rgba(0,17,120,0.06)',transition:'all 0.2s'}}>
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
+                Pengaturan Publik
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -230,16 +246,25 @@ export default function Dinas() {
 
             <div style={{display:'flex',flexDirection:'column',gap:'6px'}}>
               <label style={{fontSize:'12.5px',fontWeight:'700',color:'#475569'}}>Singkatan / Akronim</label>
-              <input type="text" value={form.singkatan} onChange={handleFormChange('singkatan')} placeholder="Misal: Bapenda, Disdik..." required
+              <input type="text" value={form.singkatan} onChange={handleFormChange('singkatan')} placeholder="Misal: Bappenda, Disdik..." required
                 style={{padding:'10px 14px',borderRadius:'8px',border:'1px solid #CBD5E1',fontSize:'13.5px',fontFamily:'inherit',outline:'none'}} />
               {errors.singkatan && <span style={{fontSize:'12px',color:'#B91C1C'}}>{errors.singkatan[0]}</span>}
             </div>
 
-            <div style={{display:'flex',flexDirection:'column',gap:'6px'}}>
-              <label style={{fontSize:'12.5px',fontWeight:'700',color:'#475569'}}>Nomor Telepon Dinas</label>
-              <input type="text" value={form.nomor_telepon} onChange={handleFormChange('nomor_telepon')} placeholder="Misal: 021-8758xxx / 08xxxxxxxxxx"
-                style={{padding:'10px 14px',borderRadius:'8px',border:'1px solid #CBD5E1',fontSize:'13.5px',fontFamily:'inherit',outline:'none'}} />
-              {errors.nomor_telepon && <span style={{fontSize:'12px',color:'#B91C1C'}}>{errors.nomor_telepon[0]}</span>}
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}}>
+              <div style={{display:'flex',flexDirection:'column',gap:'6px'}}>
+                <label style={{fontSize:'12.5px',fontWeight:'700',color:'#475569'}}>Nomor Telepon Dinas</label>
+                <input type="text" value={form.nomor_telepon} onChange={handleFormChange('nomor_telepon')} placeholder="Misal: 021-8758xxx"
+                  style={{padding:'10px 14px',borderRadius:'8px',border:'1px solid #CBD5E1',fontSize:'13.5px',fontFamily:'inherit',outline:'none'}} />
+                {errors.nomor_telepon && <span style={{fontSize:'12px',color:'#B91C1C'}}>{errors.nomor_telepon[0]}</span>}
+              </div>
+
+              <div style={{display:'flex',flexDirection:'column',gap:'6px'}}>
+                <label style={{fontSize:'12.5px',fontWeight:'700',color:'#475569'}}>Batas Kuota / Hari</label>
+                <input type="number" min="1" max="50" value={form.kuota_per_hari} onChange={handleFormChange('kuota_per_hari')} placeholder="Default: 2"
+                  style={{padding:'10px 14px',borderRadius:'8px',border:'1px solid #CBD5E1',fontSize:'13.5px',fontFamily:'inherit',outline:'none'}} />
+                {errors.kuota_per_hari && <span style={{fontSize:'12px',color:'#B91C1C'}}>{errors.kuota_per_hari[0]}</span>}
+              </div>
             </div>
 
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}}>
@@ -286,8 +311,8 @@ export default function Dinas() {
               <thead>
                 <tr>
                   {(isSuperAdmin
-                    ? ['Nama Instansi','Singkatan','Nomor Telepon','Latitude','Longitude','Aksi']
-                    : ['Nama Instansi','Singkatan','Nomor Telepon','Latitude','Longitude']
+                    ? ['Nama Instansi','Singkatan','Nomor Telepon','Kuota Harian','Latitude','Longitude','Aksi']
+                    : ['Nama Instansi','Singkatan','Nomor Telepon','Kuota Harian','Latitude','Longitude']
                   ).map(h=>(
                     <th key={h} style={{background:'#F8FAFC',padding:'12px 16px',fontSize:'11px',fontWeight:'700',color:'#64748B',textTransform:'uppercase',letterSpacing:'0.6px',textAlign:'left',whiteSpace:'nowrap',borderBottom:'1px solid #E2E8F0'}}>{h}</th>
                   ))}
@@ -296,7 +321,7 @@ export default function Dinas() {
               <tbody>
                 {filteredData.length === 0 ? (
                   <tr>
-                    <td colSpan={isSuperAdmin ? 6 : 5} style={{padding:'32px',textAlign:'center',color:'#64748B',fontSize:'13.5px'}}>Tidak ada data dinas ditemukan.</td>
+                    <td colSpan={isSuperAdmin ? 7 : 6} style={{padding:'32px',textAlign:'center',color:'#64748B',fontSize:'13.5px'}}>Tidak ada data dinas ditemukan.</td>
                   </tr>
                 ) : (
                   filteredData.map(item => (
@@ -304,6 +329,22 @@ export default function Dinas() {
                       <td style={{padding:'14px 16px',fontSize:'13.5px',fontWeight:'600',color:'#0F172A'}}>{item.nama}</td>
                       <td style={{padding:'14px 16px',fontSize:'13px',color:'#475569'}}>{item.singkatan}</td>
                       <td style={{padding:'14px 16px',fontSize:'13px',color:'#0028B3',fontWeight:'600'}}>{item.nomor_telepon || '-'}</td>
+                      <td style={{padding:'14px 16px',fontSize:'13px'}}>
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '3px 8px',
+                          borderRadius: '6px',
+                          background: '#EFF6FF',
+                          color: '#0028B3',
+                          border: '1px solid #BFDBFE',
+                          fontWeight: 700,
+                          fontSize: '11.5px',
+                        }}>
+                          {item.kuota_per_hari ?? 2} Rombongan/Hari
+                        </span>
+                      </td>
                       <td style={{padding:'14px 16px',fontSize:'13px',color:'#475569'}}>{item.latitude !== null ? item.latitude : '-'}</td>
                       <td style={{padding:'14px 16px',fontSize:'13px',color:'#475569'}}>{item.longitude !== null ? item.longitude : '-'}</td>
                       {isSuperAdmin && (

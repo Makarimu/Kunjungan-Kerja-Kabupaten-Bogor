@@ -72,6 +72,17 @@ class KalenderService
         return [];
     }
 
+    public function getKuotaPerHari(?int $dinasId = null): int
+    {
+        if ($dinasId) {
+            $dinas = \App\Models\Dinas::find($dinasId);
+            if ($dinas && $dinas->kuota_per_hari !== null && (int)$dinas->kuota_per_hari >= 1) {
+                return (int)$dinas->kuota_per_hari;
+            }
+        }
+        return (int) config('visit.max_per_hari', self::MAKS_PER_HARI);
+    }
+
     public function isTanggalValid(string $tanggal, ?string $email = null, ?int $dinasId = null): bool
     {
         $date = Carbon::parse($tanggal)->startOfDay();
@@ -115,7 +126,7 @@ class KalenderService
             return false;
         }
 
-        // 4. Validasi Kapasitas Penuh (>= MAKS_PER_HARI per dinas / global)
+        // 4. Validasi Kapasitas Penuh (>= kuota_per_hari per dinas / default config)
         // Hanya menghitung permohonan yang aktif / tidak ditolak / tidak dibatalkan
         $countQuery = Permohonan::whereDate('tanggal_kunjungan', $date->toDateString())
             ->whereNotIn('status', ['Ditolak', 'Dibatalkan']);
@@ -125,8 +136,9 @@ class KalenderService
         }
             
         $count = $countQuery->count();
+        $maxKuota = $this->getKuotaPerHari($dinasId);
 
-        if ($count >= config('visit.max_per_hari', 2)) {
+        if ($count >= $maxKuota) {
             return false;
         }
 
@@ -142,8 +154,11 @@ class KalenderService
                 'blocked_details' => (object)[],
                 'full' => [],
                 'approved_visits' => (object)[],
+                'kuota_per_hari' => self::MAKS_PER_HARI,
             ];
         }
+
+        $maxKuota = $this->getKuotaPerHari($dinasId);
 
         $diblokirQuery = TanggalDiblokir::whereDate('tanggal', '>=', Carbon::today())
             ->where(function($q) use ($dinasId) {
@@ -170,30 +185,34 @@ class KalenderService
             ->where('dinas_id', $dinasId);
             
         $penuh = $penuhQuery->groupBy('tanggal_kunjungan')
-            ->having('total', '>=', config('visit.max_per_hari', 2))
+            ->having('total', '>=', $maxKuota)
             ->get()
             ->map(fn($p) => $p->tanggal_kunjungan ? Carbon::parse($p->tanggal_kunjungan)->format('Y-m-d') : null)
             ->filter()
             ->values()
             ->toArray();
 
-        // Ambil permohonan yang sudah di-ACC (Disetujui / Selesai) untuk dinas terkait
-        $approvedVisitsModels = Permohonan::whereDate('tanggal_kunjungan', '>=', Carbon::today())
-            ->whereIn('status', ['Disetujui', 'Selesai'])
+        // Ambil permohonan aktif (Disetujui, Selesai, Pending, Revisi) untuk dinas terkait
+        $allVisitsModels = Permohonan::whereDate('tanggal_kunjungan', '>=', Carbon::today())
+            ->whereNotIn('status', ['Ditolak', 'Dibatalkan'])
             ->where('dinas_id', $dinasId)
             ->orderBy('tanggal_kunjungan', 'asc')
+            ->orderByRaw("CASE WHEN status IN ('Disetujui', 'Selesai') THEN 0 ELSE 1 END")
             ->orderBy('jam_penerimaan', 'asc')
             ->get();
 
         $approvedVisits = [];
-        foreach ($approvedVisitsModels as $p) {
+        foreach ($allVisitsModels as $p) {
             if ($p->tanggal_kunjungan) {
                 $tgl = Carbon::parse($p->tanggal_kunjungan)->format('Y-m-d');
                 if (!isset($approvedVisits[$tgl])) {
                     $approvedVisits[$tgl] = [];
                 }
+                $isApproved = in_array($p->status, ['Disetujui', 'Selesai']);
                 $approvedVisits[$tgl][] = [
                     'id' => $p->id,
+                    'status' => $p->status,
+                    'is_approved' => $isApproved,
                     'instansi' => $p->instansi,
                     'nama_tamu' => $p->nama_ketua_rombongan ?: $p->nama_pic,
                     'jumlah_peserta' => (int) ($p->jumlah_peserta ?: 0),
@@ -208,6 +227,7 @@ class KalenderService
             'blocked_details' => $blockedDetails,
             'full' => array_values(array_unique($penuh)),
             'approved_visits' => $approvedVisits,
+            'kuota_per_hari' => $maxKuota,
         ];
     }
 

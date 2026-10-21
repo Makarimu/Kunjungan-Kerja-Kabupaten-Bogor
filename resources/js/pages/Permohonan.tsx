@@ -41,7 +41,6 @@ function formatDisplayDate(s: any) {
   return `${parseInt(d)} ${MONTHS_ID[parseInt(m) - 1]} ${y}`;
 }
 
-// ---- Calendar Component — React.memo untuk isolasi dari re-render form ----
 const Calendar = memo(function Calendar({
   busyDates = [],
   blockedDates = [],
@@ -51,7 +50,8 @@ const Calendar = memo(function Calendar({
   selectedDate,
   onSelect,
   minDateStr,
-  userBookedDates = []
+  userBookedDates = [],
+  kuotaPerHari = 2,
 }: any) {
   const today = useMemo(() => {
     const d = new Date();
@@ -205,6 +205,7 @@ const Calendar = memo(function Calendar({
                 onHover={setHoveredDate}
                 onTogglePin={setPinnedDate}
                 onClosePopup={handleClosePopup}
+                kuotaPerHari={kuotaPerHari}
               />
             );
           })}
@@ -310,9 +311,9 @@ const Calendar = memo(function Calendar({
                   )
                 }}>
                   {panelInfo.cls === 'blocked' ? '🔒 Diblokir'
-                    : panelInfo.cls === 'busy' ? '🔴 Penuh'
+                    : panelInfo.cls === 'busy' ? 'Penuh'
                     : panelInfo.cls === 'user-booked' ? '⚠️ Sudah Diajukan'
-                    : panelInfo.cls === 'available' ? '✅ Tersedia'
+                    : panelInfo.cls === 'available' ? 'Tersedia'
                     : panelInfo.cls === 'past' ? 'Sudah Lewat'
                     : panelInfo.cls === 'weekend' ? 'Akhir Pekan'
                     : panelInfo.cls === 'too-soon' ? 'Terlalu Dekat'
@@ -338,69 +339,151 @@ const Calendar = memo(function Calendar({
                   </div>
                 )}
 
-                {panelInfo.cls === 'busy' && (
+                {(panelInfo.cls === 'busy' || panelInfo.cls === 'available') && (
                   <>
-                    <div style={{ fontSize: '12.5px', color: '#991B1B', marginBottom: panelInfo.visits.length > 0 ? '10px' : '0', lineHeight: '1.5' }}>
-                      Kuota kunjungan pada tanggal ini sudah penuh (maks. 2 rombongan/hari). Silakan pilih tanggal lain.
+                    <div style={{
+                      fontSize: '12.5px',
+                      color: panelInfo.cls === 'busy' ? '#991B1B' : '#15803D',
+                      marginBottom: panelInfo.visits.length > 0 ? '12px' : '0',
+                      lineHeight: '1.5',
+                      fontWeight: '600'
+                    }}>
+                      {panelInfo.cls === 'busy'
+                        ? `Kuota kunjungan pada tanggal ini sudah penuh (maks. ${kuotaPerHari} rombongan/hari). Silakan pilih tanggal lain.`
+                        : panelInfo.visits.length > 0
+                        ? `Tanggal tersedia — terisi ${panelInfo.visits.length} dari ${kuotaPerHari} kuota. Sisa ${Math.max(1, kuotaPerHari - panelInfo.visits.length)} kuota rombongan.`
+                        : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#15803D' }}>
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                            <span>Tanggal ini tersedia. Belum ada tamu terjadwal.</span>
+                          </div>
+                        )}
                     </div>
+
                     {panelInfo.visits.length > 0 && (
                       <div>
-                        <div style={{ fontSize: '10.5px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: '6px' }}>Tamu Terjadwal (ACC):</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                          {panelInfo.visits.map((visit: any, i: number) => (
-                            <div key={i} style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderLeft: '3.5px solid #DC2626', borderRadius: '8px', padding: '8px 10px' }}>
-                              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '6px', marginBottom: '3px' }}>
-                                <span style={{ fontSize: '12.5px', fontWeight: '800', color: '#991B1B', lineHeight: '1.3' }}>{visit.instansi}</span>
-                                {visit.jam_penerimaan && <span style={{ fontSize: '10px', fontWeight: '700', color: '#B91C1C', background: '#FEE2E2', padding: '2px 6px', borderRadius: '5px', flexShrink: 0 }}>{visit.jam_penerimaan}</span>}
-                              </div>
-                              <div style={{ fontSize: '11px', color: '#475569', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                <span>Ketua: <strong style={{ color: '#1E293B' }}>{visit.nama_tamu}</strong></span>
-                                {visit.jumlah_peserta > 0 && <span>• <strong>{visit.jumlah_peserta} Orang</strong></span>}
-                              </div>
-                            </div>
-                          ))}
+                        <div style={{
+                          fontSize: '10.5px',
+                          fontWeight: '800',
+                          color: '#475569',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.4px',
+                          marginBottom: '8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between'
+                        }}>
+                          <span>Rincian Slot Kuota ({panelInfo.visits.length}/{kuotaPerHari} Terisi):</span>
                         </div>
-                      </div>
-                    )}
-                  </>
-                )}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {panelInfo.visits.map((visit: any, i: number) => {
+                            const isAcc = visit.is_approved || visit.status === 'Disetujui' || visit.status === 'Selesai';
+                            return (
+                              <div
+                                key={i}
+                                style={{
+                                  background: isAcc ? '#F0FDF4' : '#FFFBEB',
+                                  border: `1px solid ${isAcc ? '#BBF7D0' : '#FDE68A'}`,
+                                  borderLeft: `3.5px solid ${isAcc ? '#16A34A' : '#F59E0B'}`,
+                                  borderRadius: '8px',
+                                  padding: '9px 11px',
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '6px', marginBottom: '4px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                    <span style={{
+                                      fontSize: '11px',
+                                      fontWeight: '800',
+                                      color: isAcc ? '#15803D' : '#92400E',
+                                      background: isAcc ? '#DCFCE7' : '#FEF3C7',
+                                      padding: '1.5px 6px',
+                                      borderRadius: '4px',
+                                      border: `1px solid ${isAcc ? '#86EFAC' : '#FCD34D'}`
+                                    }}>
+                                      Slot {i + 1}
+                                    </span>
+                                    <span style={{ fontSize: '12.5px', fontWeight: '800', color: isAcc ? '#14532D' : '#78350F', lineHeight: '1.3' }}>
+                                      {visit.instansi || 'Permohonan Masuk'}
+                                    </span>
+                                  </div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0 }}>
+                                    {visit.jam_penerimaan && (
+                                      <span style={{
+                                        fontSize: '10px',
+                                        fontWeight: '700',
+                                        color: isAcc ? '#16A34A' : '#B45309',
+                                        background: isAcc ? '#DCFCE7' : '#FEF3C7',
+                                        padding: '2px 6px',
+                                        borderRadius: '5px',
+                                      }}>
+                                        {visit.jam_penerimaan}
+                                      </span>
+                                    )}
+                                    <span style={{
+                                      fontSize: '10.5px',
+                                      fontWeight: '700',
+                                      color: isAcc ? '#15803D' : '#B45309',
+                                      background: isAcc ? '#DCFCE7' : '#FEF3C7',
+                                      border: `1px solid ${isAcc ? '#86EFAC' : '#FCD34D'}`,
+                                      padding: '2px 7px',
+                                      borderRadius: '5px',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '3px'
+                                    }}>
+                                      {isAcc ? '✅ Disetujui' : '⏳ Menunggu Verifikasi'}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div style={{ fontSize: '11px', color: '#475569', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                  <span>Ketua: <strong style={{ color: '#1E293B' }}>{visit.nama_tamu}</strong></span>
+                                  {visit.jumlah_peserta > 0 && <span>• <strong>{visit.jumlah_peserta} Orang</strong></span>}
+                                  {!isAcc && (
+                                    <span style={{ color: '#B45309', fontStyle: 'italic' }}>
+                                      • Sedang dalam proses verifikasi permohonan lain
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
 
-                {panelInfo.cls === 'user-booked' && (
-                  <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderLeft: '3.5px solid #F59E0B', borderRadius: '8px', padding: '10px 12px' }}>
-                    <div style={{ fontSize: '12.5px', color: '#92400E', lineHeight: '1.5' }}>
-                      Email Anda sudah mencapai batas maksimal 2 pengajuan kunjungan untuk dinas ini pada tanggal tersebut.
-                    </div>
-                  </div>
-                )}
-
-                {panelInfo.cls === 'available' && (
-                  <>
-                    {panelInfo.visits.length > 0 ? (
-                      <div>
-                        <div style={{ fontSize: '12.5px', color: '#15803D', marginBottom: '10px', fontWeight: '600' }}>
-                          Tanggal tersedia — sisa {Math.max(1, 2 - panelInfo.visits.length)} kuota. Tamu yang sudah di-ACC:
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                          {panelInfo.visits.map((visit: any, i: number) => (
-                            <div key={i} style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderLeft: '3.5px solid #22C55E', borderRadius: '8px', padding: '8px 10px' }}>
-                              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '6px', marginBottom: '3px' }}>
-                                <span style={{ fontSize: '12.5px', fontWeight: '800', color: '#15803D', lineHeight: '1.3' }}>{visit.instansi}</span>
-                                {visit.jam_penerimaan && <span style={{ fontSize: '10px', fontWeight: '700', color: '#16A34A', background: '#DCFCE7', padding: '2px 6px', borderRadius: '5px', flexShrink: 0 }}>{visit.jam_penerimaan}</span>}
+                          {/* Tampilkan slot kosong jika tanggal masih available dan belum mencapai kuota */}
+                          {panelInfo.cls === 'available' && panelInfo.visits.length < kuotaPerHari && (
+                            <div
+                              style={{
+                                background: '#F8FAFC',
+                                border: '1.5px dashed #CBD5E1',
+                                borderRadius: '8px',
+                                padding: '8px 11px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: '8px'
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{
+                                  fontSize: '11px',
+                                  fontWeight: '800',
+                                  color: '#059669',
+                                  background: '#ECFDF5',
+                                  padding: '1.5px 6px',
+                                  borderRadius: '4px',
+                                  border: '1px solid #A7F3D0'
+                                }}>
+                                  Slot {panelInfo.visits.length + 1}
+                                </span>
+                                <span style={{ fontSize: '12px', fontWeight: '600', color: '#059669' }}>
+                                  🟢 Slot Tersedia (Kosong)
+                                </span>
                               </div>
-                              <div style={{ fontSize: '11px', color: '#475569', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                <span>Ketua: <strong style={{ color: '#1E293B' }}>{visit.nama_tamu}</strong></span>
-                                {visit.jumlah_peserta > 0 && <span>• <strong>{visit.jumlah_peserta} Orang</strong></span>}
-                              </div>
+                              <span style={{ fontSize: '11px', color: '#64748B' }}>Dapat Anda pilih</span>
                             </div>
-                          ))}
+                          )}
                         </div>
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#15803D' }}>
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="20 6 9 17 4 12"/>
-                        </svg>
-                        <span style={{ fontSize: '13px', fontWeight: '600' }}>Tanggal ini tersedia. Belum ada tamu terjadwal.</span>
                       </div>
                     )}
                   </>
@@ -429,7 +512,6 @@ const Calendar = memo(function Calendar({
   );
 });
 
-// CalendarDay diisolasi agar hanya hari yang berubah yang re-render
 const CalendarDay = memo(function CalendarDay({
   dateStr,
   day,
@@ -443,9 +525,13 @@ const CalendarDay = memo(function CalendarDay({
   onDayClick,
   onHover,
   onTogglePin,
-  onClosePopup
+  onClosePopup,
+  kuotaPerHari = 2,
 }: any) {
-  const hasApprovedVisits = Array.isArray(visitsOnDay) && visitsOnDay.length > 0;
+  const accVisitsCount = useMemo(() => Array.isArray(visitsOnDay) ? visitsOnDay.filter((v: any) => v.is_approved || v.status === 'Disetujui' || v.status === 'Selesai').length : 0, [visitsOnDay]);
+  const pendingVisitsCount = useMemo(() => Array.isArray(visitsOnDay) ? visitsOnDay.filter((v: any) => !v.is_approved && v.status !== 'Disetujui' && v.status !== 'Selesai').length : 0, [visitsOnDay]);
+  const hasVisits = Array.isArray(visitsOnDay) && visitsOnDay.length > 0;
+  const hasApprovedVisits = accVisitsCount > 0;
   // Hari yang bisa diklik untuk panel info (semua kecuali empty)
   const isClickable = cls !== 'empty';
   // Hover/pin popup hanya untuk blocked
@@ -478,7 +564,7 @@ const CalendarDay = memo(function CalendarDay({
 
   return (
     <div
-      className={`cal-day ${cls}${isSelected && cls !== 'user-booked' ? ' selected' : ''}${isToday ? ' today' : ''}${hasApprovedVisits ? ' has-guest' : ''}`}
+      className={`cal-day ${cls}${isSelected && cls !== 'user-booked' ? ' selected' : ''}${isToday ? ' today' : ''}${hasVisits ? ' has-guest' : ''}`}
       onClick={handleClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
@@ -487,14 +573,14 @@ const CalendarDay = memo(function CalendarDay({
         zIndex: isPopupOpen ? 200 : (isSelected ? 3 : 1),
       }}
     >
-      <span style={{ position: 'relative', ...(hasApprovedVisits ? { transform: 'translateY(-4px)' } : {}) }}>
+      <span style={{ position: 'relative', ...(hasVisits ? { transform: 'translateY(-4px)' } : {}) }}>
         {day}
       </span>
 
-      {hasApprovedVisits && (
+      {hasVisits && (
         <span
           className="cal-day-guest-badge"
-          title={`${visitsOnDay.length} Rombongan Tamu Disetujui (ACC)`}
+          title={`${accVisitsCount} Disetujui (ACC)${pendingVisitsCount > 0 ? `, ${pendingVisitsCount} Menunggu Verifikasi` : ''}`}
           style={{
             position: 'absolute',
             bottom: '2px',
@@ -502,21 +588,29 @@ const CalendarDay = memo(function CalendarDay({
             transform: 'translateX(-50%)',
             display: 'inline-flex',
             alignItems: 'center',
-            gap: '1.5px',
-            fontSize: '8px',
+            justifyContent: 'center',
+            fontSize: '7.5px',
             fontWeight: '800',
             lineHeight: '1',
-            padding: '1px 3.5px',
+            padding: '1px 3px',
             borderRadius: '4px',
-            background: cls === 'busy' ? '#FEE2E2' : '#EFF6FF',
-            color: cls === 'busy' ? '#B91C1C' : '#0028B3',
-            border: `1px solid ${cls === 'busy' ? '#FECACA' : '#BFDBFE'}`,
+            background: cls === 'busy' ? '#FEE2E2' : (pendingVisitsCount > 0 && accVisitsCount === 0 ? '#FEF3C7' : '#EFF6FF'),
+            color: cls === 'busy' ? '#B91C1C' : (pendingVisitsCount > 0 && accVisitsCount === 0 ? '#B45309' : '#0028B3'),
+            border: `1px solid ${cls === 'busy' ? '#FECACA' : (pendingVisitsCount > 0 && accVisitsCount === 0 ? '#FDE68A' : '#BFDBFE')}`,
             pointerEvents: 'none',
             whiteSpace: 'nowrap',
+            maxWidth: 'calc(100% - 4px)',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            boxSizing: 'border-box',
             zIndex: 2,
           }}
         >
-          {visitsOnDay.length} ACC
+          {accVisitsCount > 0 && pendingVisitsCount > 0
+            ? `${accVisitsCount} ACC +${pendingVisitsCount}`
+            : accVisitsCount > 0
+            ? `${accVisitsCount} ACC`
+            : `${pendingVisitsCount} Verif`}
         </span>
       )}
 
@@ -630,7 +724,7 @@ const CalendarDay = memo(function CalendarDay({
                       </svg>
                     </span>
                     <span style={{ fontSize: '12px', fontWeight: '800', color: '#B91C1C', letterSpacing: '-0.2px' }}>
-                      Jadwal Penuh {visitsOnDay.length > 0 ? `(${visitsOnDay.length}/2 ACC)` : ''}
+                      Jadwal Penuh {visitsOnDay.length > 0 ? `(${visitsOnDay.length}/${kuotaPerHari} ACC)` : ''}
                     </span>
                   </div>
                   <button
@@ -705,7 +799,7 @@ const CalendarDay = memo(function CalendarDay({
                     marginBottom: '8px'
                   }}>
                     <div style={{ fontSize: '12px', color: '#991B1B', lineHeight: '1.45' }}>
-                      Kuota kunjungan kerja pada tanggal ini sudah penuh (maksimal 2 rombongan per hari). Silakan pilih tanggal lain.
+                      Kuota kunjungan kerja pada tanggal ini sudah penuh (maksimal {kuotaPerHari} rombongan per hari). Silakan pilih tanggal lain.
                     </div>
                   </div>
                 )}
@@ -803,7 +897,7 @@ const CalendarDay = memo(function CalendarDay({
                       </svg>
                     </span>
                     <span style={{ fontSize: '12px', fontWeight: '800', color: '#0028B3', letterSpacing: '-0.2px' }}>
-                      Tersedia (Sisa {Math.max(1, 2 - visitsOnDay.length)} Kuota)
+                      Tersedia (Sisa {Math.max(1, kuotaPerHari - visitsOnDay.length)} Kuota)
                     </span>
                   </div>
                   <button
@@ -1264,6 +1358,7 @@ export default function Permohonan() {
   const [blockedDetails, setBlockedDetails] = useState<Record<string, any>>({});
   const [fullDates, setFullDates] = useState<string[]>([]);
   const [approvedVisits, setApprovedVisits] = useState<Record<string, any[]>>({});
+  const [dinasKuota, setDinasKuota] = useState<number>(2);
   const [minDateStr, setMinDateStr] = useState<string>('');
   const [minHari, setMinHari] = useState<number>(1);
   const [userBookedDates, setUserBookedDates] = useState<string[]>([]);
@@ -1302,6 +1397,7 @@ export default function Permohonan() {
       setBlockedDetails({});
       setFullDates([]);
       setApprovedVisits({});
+      setDinasKuota(2);
       return;
     }
 
@@ -1341,6 +1437,9 @@ export default function Permohonan() {
         setBlockedDetails(details);
         setFullDates(full);
         setApprovedVisits(approved);
+        if (res.data.kuota_per_hari !== undefined) {
+          setDinasKuota(Number(res.data.kuota_per_hari) || 2);
+        }
 
         // Jika tanggal yang sempat dipilih ternyata masuk tanggal terpakai/diblokir pada dinas baru, batalkan pilihan
         setSelectedDate(prev => (prev && busy.includes(prev) ? '' : prev));
@@ -1573,7 +1672,22 @@ export default function Permohonan() {
     setForm(INITIAL_FORM);
     setFile1(null);
     setFile2(null);
+    setErrors({});
+    setShowSubmitConfirm(false);
+    setShowRecaptcha(false);
+    setCopyLabel('Salin');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
+
+  useEffect(() => {
+    const handleResetEvent = () => {
+      handleResetForm();
+    };
+    window.addEventListener('reset-permohonan-form', handleResetEvent);
+    return () => {
+      window.removeEventListener('reset-permohonan-form', handleResetEvent);
+    };
+  }, [handleResetForm]);
 
   return (
     <PublicLayout>
@@ -1637,6 +1751,7 @@ export default function Permohonan() {
                 onSelect={handleDateSelect}
                 minDateStr={minDateStr}
                 userBookedDates={userBookedDates}
+                kuotaPerHari={dinasKuota}
               />
             </div>
 

@@ -12,40 +12,42 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('app_settings', function (Blueprint $table) {
-            $table->string('key')->primary();
-            $table->text('value')->nullable();
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('app_settings')) {
+            Schema::create('app_settings', function (Blueprint $table) {
+                $table->string('key')->primary();
+                $table->text('value')->nullable();
+                $table->timestamps();
+            });
 
-        // Insert default initial settings
-        $now = now();
-        DB::table('app_settings')->insert([
-            [
-                'key' => 'header_telepon',
-                'value' => 'Telp: (021) 875-8605',
-                'created_at' => $now,
-                'updated_at' => $now,
-            ],
-            [
-                'key' => 'header_jam_layanan',
-                'value' => 'Jam Layanan: Senin – Jumat (08.00 – 16.00 WIB)',
-                'created_at' => $now,
-                'updated_at' => $now,
-            ],
-            [
-                'key' => 'header_link_portal_bogor',
-                'value' => 'https://bogorkab.go.id',
-                'created_at' => $now,
-                'updated_at' => $now,
-            ],
-            [
-                'key' => 'header_link_portal_ekabo',
-                'value' => 'https://ekabo.bogorkab.go.id',
-                'created_at' => $now,
-                'updated_at' => $now,
-            ],
-        ]);
+            // Insert default initial settings
+            $now = now();
+            DB::table('app_settings')->insert([
+                [
+                    'key' => 'header_telepon',
+                    'value' => 'Telp: (021) 875-8605',
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ],
+                [
+                    'key' => 'header_jam_layanan',
+                    'value' => 'Jam Layanan: Senin – Jumat (08.00 – 16.00 WIB)',
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ],
+                [
+                    'key' => 'header_link_portal_bogor',
+                    'value' => 'https://bogorkab.go.id',
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ],
+                [
+                    'key' => 'header_link_portal_ekabo',
+                    'value' => 'https://ekabo.bogorkab.go.id',
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ],
+            ]);
+        }
     }
 
     /**

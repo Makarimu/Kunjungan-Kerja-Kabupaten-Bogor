@@ -11,15 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (Schema::hasColumn('app_tanggal_diblokir', 'dinas_id')) {
+        if (!Schema::hasColumn('app_tanggal_diblokir', 'dinas_id')) {
             Schema::table('app_tanggal_diblokir', function (Blueprint $table) {
-                $table->dropColumn('dinas_id');
+                $table->foreignId('dinas_id')->nullable()->constrained('app_md_dinas')->nullOnDelete();
             });
         }
-
-        Schema::table('app_tanggal_diblokir', function (Blueprint $table) {
-            $table->foreignId('dinas_id')->nullable()->constrained('app_md_dinas')->nullOnDelete();
-        });
     }
 
     /**

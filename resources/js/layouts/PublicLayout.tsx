@@ -86,6 +86,17 @@ export default function PublicLayout({ children }: { children?: React.ReactNode 
     }
   };
 
+  const handlePermohonanClick = (e: React.MouseEvent) => {
+    if (sidebarOpen) closeSidebar();
+
+    if (location.pathname === '/permohonan' || location.pathname.startsWith('/permohonan')) {
+      e.preventDefault();
+      navigate('/permohonan', { replace: true });
+      window.dispatchEvent(new Event('reset-permohonan-form'));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       {/* Topbar Info Pemerintahan */}
@@ -144,7 +155,7 @@ export default function PublicLayout({ children }: { children?: React.ReactNode 
           </nav>
 
           <div className="header-actions">
-            <Link to="/permohonan" className="btn-header-cta">
+            <Link to="/permohonan" onClick={handlePermohonanClick} className="btn-header-cta">
               <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M14 3v4a1 1 0 0 0 1 1h4" />
                 <path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z" />
@@ -178,7 +189,7 @@ export default function PublicLayout({ children }: { children?: React.ReactNode 
           <a href="#eksplorasi-section" onClick={handlePanduanClick}>Panduan Layanan</a>
           <Link to="/status" onClick={closeSidebar} className={location.pathname.startsWith('/status') ? 'active' : ''}>Status Permohonan</Link>
           <Link to="/riwayat-kunjungan" onClick={closeSidebar} className={location.pathname.startsWith('/riwayat-kunjungan') ? 'active' : ''}>Riwayat Kunjungan</Link>
-          <Link to="/permohonan" onClick={closeSidebar} className={location.pathname.startsWith('/permohonan') ? 'active' : ''}>Ajukan Permohonan</Link>
+          <Link to="/permohonan" onClick={handlePermohonanClick} className={location.pathname.startsWith('/permohonan') ? 'active' : ''}>Ajukan Permohonan</Link>
         </nav>
       </div>
 
@@ -237,7 +248,7 @@ export default function PublicLayout({ children }: { children?: React.ReactNode 
               <div className="gov-footer-col">
                 <h5 className="gov-footer-title">Layanan Utama</h5>
                 <ul className="gov-footer-links">
-                  <li><Link to="/permohonan">Ajukan Permohonan</Link></li>
+                  <li><Link to="/permohonan" onClick={handlePermohonanClick}>Ajukan Permohonan</Link></li>
                   <li><Link to="/status">Status Permohonan</Link></li>
                   <li><a href="#ketentuan-section" onClick={handleKetentuanClick}>Ketentuan Kunjungan</a></li>
                   <li><Link to="/riwayat-kunjungan">Riwayat Kunjungan</Link></li>

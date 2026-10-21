@@ -16,8 +16,15 @@ class Dinas extends Model
         'nama',
         'singkatan',
         'nomor_telepon',
+        'kuota_per_hari',
         'latitude',
         'longitude',
+    ];
+
+    protected $casts = [
+        'kuota_per_hari' => 'integer',
+        'latitude' => 'float',
+        'longitude' => 'float',
     ];
 
     public function permohonan(): HasMany
