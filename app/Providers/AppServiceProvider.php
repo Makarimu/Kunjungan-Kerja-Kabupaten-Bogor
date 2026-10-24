@@ -16,8 +16,11 @@ use App\Repositories\RiwayatKunjunganRepository;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
+use Symfony\Component\Mailer\Bridge\Brevo\Transport\BrevoTransportFactory;
+use Symfony\Component\Mailer\Transport\Dsn;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -38,6 +41,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Register Brevo (Sendinblue) as a custom mail transport driver
+        Mail::extend('brevo', function (array $config = []) {
+            $apiKey = $config['key'] ?? config('services.brevo.key');
+
+            return (new BrevoTransportFactory())
+                ->create(new Dsn('brevo+api', 'default', $apiKey));
+        });
         $host = (string) (request()->getHost() ?: '');
         $isLocalHost = str_contains($host, '127.0.0.1') || str_contains($host, 'localhost');
         if ($this->app->environment('production') && !$isLocalHost) {

@@ -104,13 +104,13 @@ class RiwayatKunjunganTest extends TestCase
             'instansi' => 'Bappeda Jakarta',
             'status' => 'Selesai',
         ]);
-        Review::create(['permohonan_id' => $p1->id, 'rating' => 5, 'review' => 'Mantap']);
+        Review::create(['permohonan_id' => $p1->id, 'rating' => 5, 'review' => 'Mantap', 'status' => 'approved']);
 
         $p2 = Permohonan::factory()->create([
             'instansi' => 'DPRD Jabar',
             'status' => 'Selesai',
         ]);
-        Review::create(['permohonan_id' => $p2->id, 'rating' => 3, 'review' => 'Cukup']);
+        Review::create(['permohonan_id' => $p2->id, 'rating' => 3, 'review' => 'Cukup', 'status' => 'approved']);
 
         // Search test
         $resSearch = $this->getJson('/api/riwayat-kunjungan?search=Jakarta');

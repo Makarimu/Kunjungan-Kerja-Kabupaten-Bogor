@@ -129,7 +129,7 @@ class EmailNotificationTest extends TestCase
         $result = $this->emailService->sendStatusEmail($permohonan);
 
         $this->assertTrue($result);
-        Mail::assertQueued(KunjunganSelesaiMail::class, function ($mail) use ($permohonan) {
+        Mail::assertSent(KunjunganSelesaiMail::class, function ($mail) use ($permohonan) {
             return $mail->hasTo('pemohon.selesai@gmail.com') &&
                    $mail->permohonan->kode === $permohonan->kode;
         });
@@ -168,7 +168,7 @@ class EmailNotificationTest extends TestCase
         $result = $this->emailService->sendStatusEmail($permohonan);
 
         $this->assertTrue($result);
-        Mail::assertQueued(KunjunganSelesaiMail::class, function ($mail) {
+        Mail::assertSent(KunjunganSelesaiMail::class, function ($mail) {
             return $mail->hasTo('andi@gmail.com') && !$mail->hasTo(config('mail.from.address'));
         });
     }

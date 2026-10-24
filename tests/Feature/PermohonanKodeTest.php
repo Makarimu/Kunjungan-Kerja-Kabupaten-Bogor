@@ -91,8 +91,24 @@ class PermohonanKodeTest extends TestCase
 
     public function test_11_retry_mechanism_berhasil_saat_terjadi_duplicate_code(): void
     {
+        $dinas = \App\Models\Dinas::firstOrCreate(
+            ['singkatan' => 'BAPPENDA'],
+            [
+                'nama' => 'Badan Pendapatan Daerah',
+                'aktif' => true,
+                'warna' => '#0028B3',
+                'kuota_per_hari' => 2,
+            ]
+        );
+
+        $tanggal = Carbon::now()->addDays(10);
+        while ($tanggal->isWeekend()) {
+            $tanggal->addDay();
+        }
+
         $data = [
-            'tanggal_kunjungan'       => Carbon::now()->addDays(10)->format('Y-m-d'),
+            'dinas_id'                => $dinas->id,
+            'tanggal_kunjungan'       => $tanggal->format('Y-m-d'),
             'nomor_surat'             => '123/ABC/2026',
             'instansi'                => 'DPRD Test',
             'nama_ketua_rombongan'    => 'Budi',
@@ -114,7 +130,7 @@ class PermohonanKodeTest extends TestCase
 
         $this->assertNotNull($permohonan->kode);
         $this->assertMatchesRegularExpression('/^KUNKER-\d{8}-[A-Z0-9]{5}$/', $permohonan->kode);
-        $this->assertDatabaseHas('permohonan', ['kode' => $permohonan->kode]);
+        $this->assertDatabaseHas('app_permohonan', ['kode' => $permohonan->kode]);
     }
 
     public function test_12_dan_13_kode_lama_tetap_dapat_dicari_dan_ditampilkan(): void

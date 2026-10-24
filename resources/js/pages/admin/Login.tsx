@@ -1,5 +1,5 @@
 import { useState, useContext, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { login as apiLogin } from '../../api/admin/auth';
 import { AuthContext } from '../../contexts/AuthContext';
 import { assetUrl, getTurnstileSiteKey } from '../../utils/url';
@@ -30,6 +30,8 @@ declare global {
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isTimeout = new URLSearchParams(location.search).get('timeout') === '1';
   const { loginContext } = useContext(AuthContext);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -170,6 +172,45 @@ export default function Login() {
             <h2>Login Admin</h2>
             <p>Sistem Kunjungan Kerja</p>
           </div>
+
+          {isTimeout && (
+            <div
+              style={{
+                backgroundColor: '#FFFBEB',
+                border: '1px solid #FDE68A',
+                borderRadius: '10px',
+                padding: '12px 14px',
+                marginBottom: '20px',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '10px',
+                color: '#92400E',
+                fontSize: '13px',
+                lineHeight: '1.45'
+              }}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="20"
+                height="20"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{ flexShrink: 0, marginTop: '1px', color: '#D97706' }}
+              >
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+              <div>
+                <strong style={{ display: 'block', fontWeight: '700', marginBottom: '2px', color: '#B45309' }}>
+                  Sesi Berakhir Otomatis
+                </strong>
+                Sesi Anda telah berakhir karena tidak ada aktivitas selama 30 menit. Silakan login kembali.
+              </div>
+            </div>
+          )}
 
           <div className="login-field">
             <label>Username</label>

@@ -61,7 +61,7 @@ class ReviewTest extends TestCase
                 ],
             ]);
 
-        $this->assertDatabaseHas('permohonan', [
+        $this->assertDatabaseHas('app_permohonan', [
             'id'     => $permohonan->id,
             'status' => 'Selesai',
         ]);
@@ -98,7 +98,7 @@ class ReviewTest extends TestCase
                 'message' => 'Terima kasih atas penilaian Anda.',
             ]);
 
-        $this->assertDatabaseHas('reviews', [
+        $this->assertDatabaseHas('app_reviews', [
             'permohonan_id' => $permohonan->id,
             'rating'        => 5,
             'status'        => 'pending',
@@ -201,7 +201,7 @@ class ReviewTest extends TestCase
             ]);
         }
 
-        $response = $this->getJson('/api/reviews/approved');
+        $response = $this->getJson('/api/reviews/approved?limit=6');
 
         $response->assertStatus(200)
             ->assertJsonCount(6, 'data');
@@ -227,7 +227,7 @@ class ReviewTest extends TestCase
                 'message' => 'Review berhasil disetujui.',
             ]);
 
-        $this->assertDatabaseHas('reviews', [
+        $this->assertDatabaseHas('app_reviews', [
             'id'     => $review->id,
             'status' => 'approved',
         ]);
@@ -242,7 +242,7 @@ class ReviewTest extends TestCase
                 'message' => 'Review berhasil ditolak.',
             ]);
 
-        $this->assertDatabaseHas('reviews', [
+        $this->assertDatabaseHas('app_reviews', [
             'id'     => $review->id,
             'status' => 'rejected',
         ]);

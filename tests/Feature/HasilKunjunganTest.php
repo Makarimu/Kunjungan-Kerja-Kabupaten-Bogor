@@ -82,8 +82,8 @@ class HasilKunjunganTest extends TestCase
         $this->assertNotNull($permohonan->hasil_kunjungan_pdf);
         Storage::disk('public')->assertExists($permohonan->hasil_kunjungan_pdf);
 
-        // Pastikan Email Kedua Queued
-        Mail::assertQueued(RingkasanTersediaMail::class, function ($mail) use ($permohonan) {
+        // Pastikan Email Kedua Terkirim
+        Mail::assertSent(RingkasanTersediaMail::class, function ($mail) use ($permohonan) {
             return $mail->hasTo($permohonan->email);
         });
     }

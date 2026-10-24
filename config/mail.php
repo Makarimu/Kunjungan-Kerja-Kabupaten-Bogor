@@ -51,6 +51,12 @@ return [
             'verify_peer' => env('MAIL_VERIFY_PEER', false),
         ],
 
+        // Brevo (Sendinblue) driver using API
+        'brevo' => [
+            'transport' => 'brevo',
+            'key' => env('BREVO_API_KEY'),
+        ],
+
         'ses' => [
             'transport' => 'ses',
         ],

@@ -13,11 +13,21 @@ class H7ValidationTest extends TestCase
     use RefreshDatabase;
 
     protected KalenderService $kalenderService;
+    protected \App\Models\Dinas $dinas;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->kalenderService = app(KalenderService::class);
+        $this->dinas = \App\Models\Dinas::firstOrCreate(
+            ['singkatan' => 'BAPPENDA'],
+            [
+                'nama' => 'Badan Pendapatan Daerah',
+                'aktif' => true,
+                'warna' => '#0028B3',
+                'kuota_per_hari' => 2,
+            ]
+        );
     }
 
     /**
@@ -26,6 +36,7 @@ class H7ValidationTest extends TestCase
     private function getPayload(string $email, string $tanggalKunjungan): array
     {
         return [
+            'dinas_id' => $this->dinas->id,
             'tanggal_kunjungan' => $tanggalKunjungan,
             'nomor_surat' => '001/TEST/2026',
             'instansi' => 'Dinas Test',
@@ -267,13 +278,15 @@ class H7ValidationTest extends TestCase
         }
         $targetDateStr = $targetDate->toDateString();
 
-        // 2 kunjungan dari email lain pada tanggal target
+        // 2 kunjungan dari email lain pada tanggal target untuk dinas yang sama
         Permohonan::factory()->create([
+            'dinas_id' => $this->dinas->id,
             'email' => 'other1@gmail.com',
             'tanggal_kunjungan' => $targetDateStr,
             'status' => 'Pending',
         ]);
         Permohonan::factory()->create([
+            'dinas_id' => $this->dinas->id,
             'email' => 'other2@gmail.com',
             'tanggal_kunjungan' => $targetDateStr,
             'status' => 'Disetujui',

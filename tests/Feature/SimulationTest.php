@@ -18,6 +18,7 @@ class SimulationTest extends TestCase
 
     protected Admin $admin;
     protected string $token;
+    protected \App\Models\Dinas $dinas;
 
     protected function setUp(): void
     {
@@ -25,6 +26,16 @@ class SimulationTest extends TestCase
         Storage::fake('public');
         Storage::disk('public')->makeDirectory('permohonan');
         Mail::fake();
+
+        $this->dinas = \App\Models\Dinas::firstOrCreate(
+            ['singkatan' => 'BAPPENDA'],
+            [
+                'nama' => 'Badan Pendapatan Daerah',
+                'aktif' => true,
+                'warna' => '#0028B3',
+                'kuota_per_hari' => 2,
+            ]
+        );
 
         // Buat admin test
         $this->admin = Admin::factory()->create([
@@ -140,6 +151,7 @@ class SimulationTest extends TestCase
 
         $fileSurat = 'data:application/pdf;base64,' . base64_encode('dummy pdf content');
         $res = $this->postJson('/api/permohonan', [
+            'dinas_id'              => $this->dinas->id,
             'tanggal_kunjungan'     => $tanggal->format('Y-m-d'),
             'nomor_surat'           => '123/ABC/2026',
             'instansi'              => 'DPRD Kab. Bogor',
@@ -250,7 +262,8 @@ class SimulationTest extends TestCase
     public function test_16_revisi_permohonan_berhasil()
     {
         $p = Permohonan::factory()->create([
-            'status'      => 'Ditolak',
+            'dinas_id'      => $this->dinas->id,
+            'status'        => 'Ditolak',
             'bisa_direvisi' => 'Ya',
         ]);
         $tanggal = Carbon::now()->addDays(15);
@@ -261,6 +274,7 @@ class SimulationTest extends TestCase
         $fileSurat = 'data:application/pdf;base64,' . base64_encode('surat baru');
 
         $res = $this->postJson("/api/permohonan/{$p->kode}/revisi", [
+            'dinas_id'              => $this->dinas->id,
             'tanggal_kunjungan'     => $tanggal->format('Y-m-d'),
             'nomor_surat'           => '124/ABC/2026',
             'instansi'              => 'DPRD Kab. Bogor',
@@ -283,6 +297,7 @@ class SimulationTest extends TestCase
     public function test_17_revisi_gagal_jika_tidak_boleh_revisi()
     {
         $p = Permohonan::factory()->create([
+            'dinas_id'      => $this->dinas->id,
             'status'        => 'Ditolak',
             'bisa_direvisi' => 'Tidak',
         ]);
@@ -294,6 +309,7 @@ class SimulationTest extends TestCase
         $fileSurat = 'data:application/pdf;base64,' . base64_encode('surat baru');
 
         $this->postJson("/api/permohonan/{$p->kode}/revisi", [
+            'dinas_id'              => $this->dinas->id,
             'tanggal_kunjungan'     => $tanggal->format('Y-m-d'),
             'nomor_surat'           => '124/ABC/2026',
             'instansi'              => 'DPRD Kab. Bogor',

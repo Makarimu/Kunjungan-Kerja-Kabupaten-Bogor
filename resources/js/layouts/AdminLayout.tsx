@@ -82,7 +82,7 @@ export default function AdminLayout({ children }: { children?: React.ReactNode }
     return 'Dashboard';
   };
 
-  const adminName = user?.name || user?.nama || localStorage.getItem('admin_nama') || 'Admin';
+  const adminName = user?.name || user?.nama || sessionStorage.getItem('admin_nama') || localStorage.getItem('admin_nama') || 'Admin';
   const adminRole = user?.dinas ? `Admin ${user.dinas.singkatan}` : 'Super Admin';
 
   const handleConfirmLogout = async () => {
