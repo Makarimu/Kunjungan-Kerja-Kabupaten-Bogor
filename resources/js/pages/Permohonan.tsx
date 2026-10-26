@@ -2,9 +2,8 @@ import React, { useState, useRef, useEffect, useCallback, useMemo, memo } from '
 import { useNavigate } from 'react-router-dom';
 import PublicLayout from '../layouts/PublicLayout';
 import api from '../services/api';
-import { loadRecaptchaScript, resetRecaptchaPromise } from '../services/recaptcha';
-import { getRecaptchaSiteKey } from '../utils/url';
 import SearchableDinasSelect from '../components/SearchableDinasSelect';
+import { TurnstileWidget } from '../components/common/TurnstileWidget';
 
 
 // ---- Static Constants (keluar dari komponen agar tidak dibuat ulang setiap render) ----
@@ -234,12 +233,8 @@ const Calendar = memo(function Calendar({
             <span>Tamu Disetujui</span>
           </div>
           <div className="legend-item">
-            <div className="legend-dot" style={LEGEND_DOT_STYLE_USER_BOOKED} />
-            <span>Maksimal 2x Kunjungan Dinas</span>
-          </div>
-          <div className="legend-item">
             <div className="legend-dot" style={LEGEND_DOT_STYLE_BLOCKED} />
-            <span>Diblokir oleh Dinas (hover untuk detail)</span>
+            <span>Diblokir oleh Dinas</span>
           </div>
           <div className="legend-item">
             <div className="legend-dot" style={LEGEND_DOT_STYLE_TERPAKAI} />
@@ -1173,163 +1168,72 @@ const InfoMenginapModal = memo(function InfoMenginapModal({ open, onClose }: any
 });
 
 // ---- Konfirmasi Kirim Modal — React.memo ----
-const KonfirmasiKirimModal = memo(function KonfirmasiKirimModal({ open, onYes, onNo, loading }: any) {
+const KonfirmasiKirimModal = memo(function KonfirmasiKirimModal({
+  open,
+  onYes,
+  onNo,
+  loading,
+  turnstileToken,
+  setTurnstileToken,
+}: any) {
   if (!open) return null;
   return (
     <div className="modal-overlay active" role="dialog" aria-modal="true" aria-labelledby="konfirmasi-kirim-title">
-      <div className="modal" style={{ maxWidth: '420px' }}>
+      <div className="modal" style={{ maxWidth: '440px' }}>
         <div className="modal-header">
-          <h3 id="konfirmasi-kirim-title">Konfirmasi Permohonan</h3>
+          <h3 id="konfirmasi-kirim-title">Konfirmasi & Verifikasi</h3>
         </div>
         <div className="modal-body">
-          <p style={{ fontSize: '14px', lineHeight: '1.6', color: 'var(--text-main)', margin: 0 }}>
-            Apakah semua data dan dokumen yang diisi sudah benar?
+          <p style={{ fontSize: '14px', lineHeight: '1.6', color: 'var(--text-main)', margin: '0 0 16px 0' }}>
+            Apakah semua data dan dokumen yang diisi sudah benar? Selesaikan verifikasi keamanan di bawah untuk mengirim permohonan:
           </p>
-          <div className="modal-actions" style={{ display: 'flex', gap: '10px', marginTop: '22px' }}>
-            <button className="btn-outline" onClick={onNo} disabled={loading} style={{ flex: 1 }}>Tidak</button>
-            <button className="btn-primary" onClick={onYes} disabled={loading} style={{ flex: 1 }}>
-              {loading ? 'Mengirim...' : 'Ya'}
-            </button>
+
+          <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '10px', border: '1px solid #E2E8F0', marginBottom: '18px' }}>
+            <TurnstileWidget
+              onVerify={(token) => setTurnstileToken(token)}
+              onExpire={() => setTurnstileToken('')}
+              onError={() => setTurnstileToken('')}
+            />
           </div>
-        </div>
-      </div>
-    </div>
-  );
-});
 
-
-
-// ---- Google reCAPTCHA v2 — React.memo ----
-const RecaptchaModal = memo(function RecaptchaModal({ open, onVerified, onClose, loading }: any) {
-  const captchaRef = useRef<HTMLDivElement | null>(null);
-  const widgetIdRef = useRef<number | null>(null);
-  const renderingRef = useRef(false);
-  const onVerifiedRef = useRef(onVerified);
-  const siteKey = getRecaptchaSiteKey();
-  const [captchaError, setCaptchaError] = useState('');
-  const [retrying, setRetrying] = useState(false);
-
-  useEffect(() => {
-    onVerifiedRef.current = onVerified;
-  }, [onVerified]);
-
-  const initCaptcha = useCallback(() => {
-    if (!open || !siteKey) return;
-    let isSubscribed = true;
-    setCaptchaError('');
-
-    loadRecaptchaScript()
-      .then(() => {
-        if (!isSubscribed || !captchaRef.current || !window.grecaptcha) return;
-        window.grecaptcha.ready(() => {
-          if (!isSubscribed || !captchaRef.current || !window.grecaptcha) return;
-          if (renderingRef.current || captchaRef.current.children.length > 0) {
-            if (widgetIdRef.current !== null) {
-              try { window.grecaptcha.reset(widgetIdRef.current); } catch { }
-            }
-            return;
-          }
-          renderingRef.current = true;
-          try {
-            const id = window.grecaptcha.render(captchaRef.current, {
-              sitekey: siteKey,
-              callback: (token: string) => { onVerifiedRef.current(token); },
-              'expired-callback': () => {
-                if (widgetIdRef.current !== null && window.grecaptcha) {
-                  try { window.grecaptcha.reset(widgetIdRef.current); } catch { }
-                }
-              },
-              'error-callback': () => {
-                setCaptchaError('reCAPTCHA tidak dapat dimuat. Periksa koneksi internet Anda lalu coba lagi.');
-              },
-            });
-            widgetIdRef.current = id;
-          } catch {
-            setCaptchaError('reCAPTCHA gagal dimuat. Pastikan site key terdaftar untuk domain ini.');
-          } finally {
-            renderingRef.current = false;
-          }
-        });
-      })
-      .catch((err: any) => {
-        if (isSubscribed) {
-          setCaptchaError(err.message || 'Skrip reCAPTCHA tidak dapat dimuat. Periksa koneksi internet Anda.');
-        }
-      });
-
-    return () => { isSubscribed = false; };
-  }, [open, siteKey]);
-
-  useEffect(() => {
-    const cleanup = initCaptcha();
-    return () => { if (cleanup) cleanup(); };
-  }, [initCaptcha]);
-
-  useEffect(() => {
-    if (!open) {
-      if (widgetIdRef.current !== null && window.grecaptcha) {
-        try { window.grecaptcha.reset(widgetIdRef.current); } catch { }
-      }
-      widgetIdRef.current = null;
-      renderingRef.current = false;
-      setCaptchaError('');
-    }
-  }, [open]);
-
-  const handleRetry = useCallback(() => {
-    resetRecaptchaPromise();
-    setRetrying(true);
-    setCaptchaError('');
-    initCaptcha();
-    setTimeout(() => setRetrying(false), 500);
-  }, [initCaptcha]);
-
-  const handleClose = useCallback(() => onClose(), [onClose]);
-
-  if (!open) return null;
-  return (
-    <div className="modal-overlay active" role="dialog" aria-modal="true" aria-labelledby="recaptcha-title">
-      <div className="modal" style={{ maxWidth: '420px' }}>
-        <div className="modal-header">
-          <h3 id="recaptcha-title">Verifikasi Keamanan</h3>
-        </div>
-        <div className="modal-body">
-          <p style={{ fontSize: '13px', lineHeight: '1.6', color: 'var(--text-sub)', marginBottom: '18px' }}>
-            Silakan centang kotak <strong>"Saya bukan robot"</strong> di bawah untuk melanjutkan pengiriman:
-          </p>
-          {siteKey ? (
-            <div style={{ display: 'flex', justifyContent: 'center', margin: '14px 0', minHeight: '78px' }}>
-              <div ref={captchaRef} />
-            </div>
-          ) : (
-            <p style={{ fontSize: '13px', color: '#B91C1C' }}>reCAPTCHA belum dikonfigurasi di .env.</p>
-          )}
-          {captchaError && (
-            <div style={{ marginTop: '10px' }}>
-              <p style={{ fontSize: '12px', color: '#B91C1C', lineHeight: '1.5', marginBottom: '8px' }}>
-                {captchaError}
-              </p>
-              <button
-                type="button"
-                className="btn-outline"
-                style={{ fontSize: '12px', padding: '4px 12px' }}
-                onClick={handleRetry}
-                disabled={retrying}
-              >
-                {retrying ? 'Memuat...' : 'Coba Lagi'}
-              </button>
-            </div>
-          )}
-          <div className="modal-actions" style={{ marginTop: '18px' }}>
-            <button className="btn-outline" onClick={handleClose} disabled={loading} style={{ width: '100%' }}>
+          <div className="modal-actions" style={{ display: 'flex', gap: '10px' }}>
+            <button className="btn-outline" onClick={onNo} disabled={loading} style={{ flex: 1 }}>
               Batal
             </button>
+            <button
+              className="btn-primary"
+              onClick={() => onYes(turnstileToken)}
+              disabled={loading || !turnstileToken}
+              style={{
+                flex: 1.4,
+                background: (!turnstileToken && !loading) ? '#94A3B8' : '#0028B3',
+                borderColor: (!turnstileToken && !loading) ? '#94A3B8' : '#0028B3',
+                cursor: (!turnstileToken && !loading) ? 'not-allowed' : 'pointer',
+                opacity: (!turnstileToken && !loading) ? 0.75 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+              }}
+            >
+              {loading && <span className="spinner" />}
+              {loading ? 'Mengirim...' : 'Kirim Permohonan'}
+            </button>
           </div>
+          {!turnstileToken && !loading && (
+            <p style={{ fontSize: '11.5px', color: '#64748B', textAlign: 'center', margin: '10px 0 0 0' }}>
+              * Menunggu verifikasi Cloudflare selesai sebelum dapat mengirim
+            </p>
+          )}
         </div>
       </div>
     </div>
   );
 });
+
+
+
+
 
 // ---- Main Page ----
 export default function Permohonan() {
@@ -1341,13 +1245,9 @@ export default function Permohonan() {
   const [submittedKode, setSubmittedKode] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
-  const [showRecaptcha, setShowRecaptcha] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState('');
   const [copyLabel, setCopyLabel] = useState('Salin');
   const abortControllerRef = useRef<AbortController | null>(null);
-
-  useEffect(() => {
-    loadRecaptchaScript().catch(() => { });
-  }, []);
 
   const [form, setForm] = useState<any>(INITIAL_FORM);
   const [file1, setFile1] = useState<File | null>(null);
@@ -1490,8 +1390,10 @@ export default function Permohonan() {
 
   const handleCloseDisclaimer = useCallback(() => setShowDisclaimer(false), []);
   const handleCloseInfoMenginap = useCallback(() => setShowInfoMenginap(false), []);
-  const handleCloseSubmitConfirm = useCallback(() => setShowSubmitConfirm(false), []);
-  const handleCloseRecaptcha = useCallback(() => setShowRecaptcha(false), []);
+  const handleCloseSubmitConfirm = useCallback(() => {
+    setShowSubmitConfirm(false);
+    setTurnstileToken('');
+  }, []);
 
   // Helper: hapus error satu field tertentu
   const clearError = useCallback((field: string) => {
@@ -1580,7 +1482,10 @@ export default function Permohonan() {
   const handleGoToStep1 = useCallback(() => setStep(1), []);
   const handleGoToStep2 = useCallback(() => setStep(2), []);
   const handleGoToStep3 = useCallback(() => setStep(3), []);
-  const handleOpenSubmitConfirm = useCallback(() => setShowSubmitConfirm(true), []);
+  const handleOpenSubmitConfirm = useCallback(() => {
+    setTurnstileToken('');
+    setShowSubmitConfirm(true);
+  }, []);
 
   const copyKode = useCallback(() => {
     navigator.clipboard.writeText(submittedKode).then(() => {
@@ -1589,7 +1494,7 @@ export default function Permohonan() {
     });
   }, [submittedKode]);
 
-  const submitPermohonan = useCallback(async (recaptchaToken: string) => {
+  const submitPermohonan = useCallback(async (token: string) => {
     setSubmitting(true);
     try {
       const formData = new FormData();
@@ -1606,23 +1511,22 @@ export default function Permohonan() {
       formData.append('jabatan_ketua_rombongan', form.jabatanKetuaRombongan);
       formData.append('jumlah_peserta', form.jumlahPeserta);
       formData.append('rencana_menginap', form.rencanaMenginap);
-      formData.append('recaptcha_token', recaptchaToken);
+      formData.append('turnstile_token', token);
       if (form.rencanaMenginap === 'Ya') formData.append('nama_hotel', form.namaHotel);
       formData.append('surat_permohonan', file1 as Blob);
       formData.append('daftar_pertanyaan', file2 as Blob);
 
       const res = await api.post('/permohonan', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       setShowSubmitConfirm(false);
-      setShowRecaptcha(false);
+      setTurnstileToken('');
       setSubmittedKode(res.data.data.kode);
       setStep(5);
     } catch (err: any) {
       if (err.response?.status === 422) {
         const errData = err.response.data.errors || {};
-        if (errData.recaptcha_token) {
-          setShowRecaptcha(false);
+        if (errData.turnstile_token) {
           setShowSubmitConfirm(true);
-          alert(errData.recaptcha_token[0] || 'Verifikasi reCAPTCHA gagal. Silakan coba lagi.');
+          alert(errData.turnstile_token?.[0] || 'Verifikasi keamanan gagal. Silakan coba lagi.');
           return;
         }
         const newErrors: any = {};
@@ -1643,23 +1547,16 @@ export default function Permohonan() {
         if (errData.daftar_pertanyaan) newErrors.file2 = true;
         setErrors(newErrors);
         setShowSubmitConfirm(false);
-        setShowRecaptcha(false);
         alert('Mohon periksa kembali form anda. ' + err.response.data.message);
         setStep(3);
       } else {
         const errorMsg = err.response?.data?.message || err.message || 'Terjadi kesalahan sistem. Silakan coba lagi nanti.';
-        setShowRecaptcha(false);
         alert(errorMsg);
       }
     } finally {
       setSubmitting(false);
     }
   }, [selectedDate, form, file1, file2]);
-
-  const handleYesSubmitConfirm = useCallback(() => {
-    setShowSubmitConfirm(false);
-    setShowRecaptcha(true);
-  }, []);
 
   const handleGoToStatus = useCallback(() => {
     navigate('/status?kode=' + submittedKode);
@@ -1674,7 +1571,6 @@ export default function Permohonan() {
     setFile2(null);
     setErrors({});
     setShowSubmitConfirm(false);
-    setShowRecaptcha(false);
     setCopyLabel('Salin');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
@@ -1693,8 +1589,14 @@ export default function Permohonan() {
     <PublicLayout>
       <DisclaimerModal open={showDisclaimer} onClose={handleCloseDisclaimer} minHari={minHari} />
       <InfoMenginapModal open={showInfoMenginap} onClose={handleCloseInfoMenginap} />
-      <KonfirmasiKirimModal open={showSubmitConfirm} onYes={handleYesSubmitConfirm} onNo={handleCloseSubmitConfirm} loading={submitting} />
-      <RecaptchaModal open={showRecaptcha} onVerified={submitPermohonan} onClose={handleCloseRecaptcha} loading={submitting} />
+      <KonfirmasiKirimModal
+        open={showSubmitConfirm}
+        onYes={submitPermohonan}
+        onNo={handleCloseSubmitConfirm}
+        loading={submitting}
+        turnstileToken={turnstileToken}
+        setTurnstileToken={setTurnstileToken}
+      />
 
       <div style={{ background: 'var(--gray-bg)', minHeight: 'calc(100vh - 80px)' }}>
         {/* Step 5: Sukses (Detail Kunjungan) */}
@@ -1957,71 +1859,6 @@ export default function Permohonan() {
                           </div>
                         )}
                       </div>
-
-                      {/* Banner Info: Tamu yang Sudah di-ACC pada Tanggal Terpilih */}
-                      {selectedDate && approvedVisits[selectedDate] && approvedVisits[selectedDate].length > 0 && (
-                        <div
-                          style={{
-                            marginTop: '12px',
-                            marginBottom: '16px',
-                            padding: '12px 14px',
-                            borderRadius: '10px',
-                            background: '#F0F9FF',
-                            border: '1px solid #BAE6FD',
-                            borderLeft: '4px solid #0284C7',
-                            animation: 'fadeIn 0.2s ease',
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '8px', color: '#0369A1', fontSize: '13px', fontWeight: '700' }}>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                              <circle cx="9" cy="7" r="4" />
-                              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                            </svg>
-                            <span>Tamu Terjadwal di Tanggal Ini ({approvedVisits[selectedDate].length}/2 Kuota Terisi):</span>
-                          </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                            {approvedVisits[selectedDate].map((t: any, idx: number) => (
-                              <div
-                                key={idx}
-                                style={{
-                                  background: '#FFFFFF',
-                                  border: '1px solid #E0F2FE',
-                                  borderRadius: '8px',
-                                  padding: '8px 12px',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'space-between',
-                                  flexWrap: 'wrap',
-                                  gap: '6px',
-                                }}
-                              >
-                                <div>
-                                  <div style={{ fontWeight: '800', color: '#0C4A6E', fontSize: '12.5px' }}>
-                                    {t.instansi}
-                                  </div>
-                                  <div style={{ color: '#475569', fontSize: '11.5px', marginTop: '1px' }}>
-                                    Ketua: <strong>{t.nama_tamu}</strong>
-                                  </div>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                  {t.jumlah_peserta > 0 && (
-                                    <span style={{ fontSize: '11px', background: '#F1F5F9', color: '#334155', padding: '2px 7px', borderRadius: '5px', fontWeight: '600' }}>
-                                      {t.jumlah_peserta} Orang
-                                    </span>
-                                  )}
-                                  {t.jam_penerimaan && (
-                                    <span style={{ fontSize: '11px', background: '#E0F2FE', color: '#0284C7', padding: '2px 7px', borderRadius: '5px', fontWeight: '700' }}>
-                                      {t.jam_penerimaan}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
 
                       <div className="form-title">Data Pemohon</div>
                       <div className="form-grid">

@@ -46,7 +46,7 @@ class DoubleBookingTest extends TestCase
             'dinas_id' => $dinasId ?: $this->dinas->id,
             'jumlah_peserta' => 5,
             'rencana_menginap' => 'Tidak',
-            'recaptcha_token' => 'dev-bypass',
+            'turnstile_token' => 'dev-bypass',
             'surat_permohonan' => 'data:application/pdf;base64,' . base64_encode('%PDF-1.4 dummy content'),
             'surat_permohonan_nama' => 'surat.pdf',
             'surat_permohonan_mime' => 'application/pdf',

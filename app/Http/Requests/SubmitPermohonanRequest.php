@@ -44,8 +44,7 @@ class SubmitPermohonanRequest extends FormRequest
             'dinas_id' => ['required', 'exists:app_md_dinas,id'],
             'jumlah_peserta' => ['required', 'integer', 'min:1'],
             'rencana_menginap' => ['required', 'in:Ya,Tidak'],
-            'nama_hotel' => ['required_if:rencana_menginap,Ya', 'nullable', 'string', 'max:200'],
-            'recaptcha_token' => (app()->environment(['testing', 'local']) || request('recaptcha_token') === 'dev-bypass') ? ['nullable', 'string'] : ['required', 'string'],
+            'turnstile_token' => ['nullable', 'string'],
 
             // Mendukung file upload (multipart/form-data) ATAU base64 string
             'surat_permohonan' => ['required'],

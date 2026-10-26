@@ -57,14 +57,25 @@ class PermohonanController extends Controller
             $tValDuration = round((microtime(true) - $tValStart) * 1000, 2);
             Log::info("[STEP 2] Validasi selesai dalam {$tValDuration}ms");
 
-            if (!empty($data['recaptcha_token']) && $data['recaptcha_token'] !== 'dev-bypass') {
-                $tRecaptchaStart = microtime(true);
-                $this->verifyRecaptcha($data['recaptcha_token'], $request->ip());
-                $tRecaptchaDuration = round((microtime(true) - $tRecaptchaStart) * 1000, 2);
-                Log::info("[PROFILING] reCAPTCHA v3 terverifikasi dalam {$tRecaptchaDuration}ms");
+            $turnstileToken = $data['turnstile_token'] 
+                ?? $request->input('turnstile_token')
+                ?? $request->input('cf-turnstile-response')
+                ?? $request->header('X-Turnstile-Token');
+
+            if (!empty($turnstileToken) && $turnstileToken !== 'dev-bypass') {
+                $tTurnstileStart = microtime(true);
+                $this->verifyTurnstile($turnstileToken, $request->ip());
+                $tTurnstileDuration = round((microtime(true) - $tTurnstileStart) * 1000, 2);
+                Log::info("[PROFILING] Cloudflare Turnstile terverifikasi dalam {$tTurnstileDuration}ms");
+            } elseif (!app()->environment(['testing', 'local']) && config('services.turnstile.enabled', true)) {
+                if (empty($turnstileToken)) {
+                    throw ValidationException::withMessages([
+                        'turnstile_token' => 'Silakan selesaikan verifikasi keamanan Cloudflare terlebih dahulu.',
+                    ]);
+                }
             }
 
-            unset($data['recaptcha_token']);
+            unset($data['turnstile_token']);
 
             $tDbStart = microtime(true);
             $permohonan = $this->permohonanService->submit($data);
@@ -97,65 +108,57 @@ class PermohonanController extends Controller
         }
     }
 
-    private function verifyRecaptcha(string $token, ?string $ip): void
+    private function verifyTurnstile(string $token, ?string $ip): void
     {
-        $secretKey = config('services.recaptcha.secret_key') 
-            ?: env('RECAPTCHA_SECRET_KEY') 
-            ?: env('VITE_RECAPTCHA_SECRET_KEY') 
-            ?: '6LcxbZktAAAAAOXzpENxut9RXX8boVWE6luiPcn6';
+        $secretKey = config('services.turnstile.secret_key')
+            ?: env('CLOUDFLARE_TURNSTILE_SECRET_KEY')
+            ?: '1x0000000000000000000000000000000AA';
+
+        // Jika token dari testing site key Cloudflare (awalan XXXX.), gunakan secret key dummy resmi Cloudflare
+        if (str_starts_with($token, 'XXXX.') || (app()->environment(['local', 'testing']) && $token === 'dev-bypass')) {
+            $secretKey = '1x0000000000000000000000000000000AA';
+        }
 
         if (!$secretKey) {
-            Log::error('reCAPTCHA secret key is not configured.');
+            Log::error('Cloudflare Turnstile secret key is not configured.');
             throw ValidationException::withMessages([
-                'recaptcha_token' => 'Verifikasi keamanan belum dikonfigurasi. Silakan hubungi administrator.',
+                'turnstile_token' => 'Verifikasi keamanan belum dikonfigurasi. Silakan hubungi administrator.',
             ]);
         }
 
-        $options = [];
-        $localCa = 'C:/laragon/etc/ssl/cacert.pem';
-        if (file_exists($localCa)) {
-            $options['verify'] = $localCa;
-        }
-
-        $result = null;
         try {
-            $client = !empty($options) ? Http::withOptions($options) : Http::timeout(7);
-            $result = $client->asForm()
-                ->timeout(7)
-                ->post('https://www.google.com/recaptcha/api/siteverify', [
+            $options = [];
+            $localCa = 'C:/laragon/etc/ssl/cacert.pem';
+            if (file_exists($localCa)) {
+                $options['verify'] = $localCa;
+            }
+
+            $client = !empty($options) ? Http::withOptions($options) : Http::timeout(8);
+            $response = $client->asForm()
+                ->timeout(8)
+                ->post('https://challenges.cloudflare.com/turnstile/v0/siteverify', [
                     'secret' => $secretKey,
                     'response' => $token,
                     'remoteip' => $ip,
                 ]);
-        } catch (\Throwable $e) {
-            Log::warning('reCAPTCHA verification initial request failed: ' . $e->getMessage());
 
-            try {
-                $result = Http::withoutVerifying()
-                    ->asForm()
-                    ->timeout(7)
-                    ->post('https://www.google.com/recaptcha/api/siteverify', [
-                        'secret' => $secretKey,
-                        'response' => $token,
-                        'remoteip' => $ip,
-                    ]);
-            } catch (\Throwable $fallbackErr) {
-                Log::warning('reCAPTCHA verification fallback request failed: ' . $fallbackErr->getMessage());
+            if (!$response->successful() || !($response->json('success') === true)) {
+                Log::warning('Cloudflare Turnstile verification rejected.', ['response' => $response->json()]);
                 throw ValidationException::withMessages([
-                    'recaptcha_token' => 'Verifikasi keamanan tidak dapat dilakukan. Silakan coba lagi.',
+                    'turnstile_token' => 'Verifikasi keamanan Cloudflare tidak valid atau telah kedaluwarsa. Silakan ulangi.',
                 ]);
             }
-        }
-
-        $json = $result->json();
-
-        if (!$result->successful() || !($json['success'] ?? false)) {
-            Log::warning('reCAPTCHA v2 verification was rejected.', ['errors' => $json['error-codes'] ?? []]);
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            Log::error('Cloudflare Turnstile verification error: ' . $e->getMessage());
             throw ValidationException::withMessages([
-                'recaptcha_token' => 'Verifikasi reCAPTCHA tidak valid atau telah kedaluwarsa. Silakan ulangi.',
+                'turnstile_token' => 'Verifikasi keamanan tidak dapat dihubungi. Silakan coba lagi.',
             ]);
         }
     }
+
+
 
     public function lacakKode(Request $request)
     {

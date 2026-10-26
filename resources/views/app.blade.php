@@ -15,8 +15,7 @@
         basePath: @json(rtrim(request()->getBasePath() ?: (parse_url(url('/'), PHP_URL_PATH) ?: ''), '/')),
         apiUrl: @json(url('/api')),
         csrfToken: @json(csrf_token()),
-        recaptchaSiteKey: @json(config('services.recaptcha.site_key') ?: env('VITE_RECAPTCHA_SITE_KEY')),
-        turnstileSiteKey: @json(config('services.turnstile.site_key') ?: env('VITE_CLOUDFLARE_TURNSTILE_SITE_KEY', '1x00000000000000000000AA')),
+        turnstileSiteKey: @json(config('services.turnstile.site_key') ?: env('VITE_CLOUDFLARE_TURNSTILE_SITE_KEY', '0x4AAAAAAFXM8EJ0ckqHt88H')),
       };
     </script>
     @viteReactRefresh

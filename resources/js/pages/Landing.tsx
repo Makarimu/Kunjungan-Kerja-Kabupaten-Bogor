@@ -434,8 +434,8 @@ export default function Landing() {
                 <h3>Hal yang Perlu Diperhatikan</h3>
               </div>
               <ul>
-                <li>Pengajuan minimal {minHari} hari sebelum rencana tanggal kunjungan</li>
-                <li>Proses review dan disposisi oleh admin memakan waktu 1–3 hari kerja</li>
+                <li>Penyampaian permohonan 7 hari sebelum tanggal kegiatan</li>
+                <li>Proses review dan disposisi oleh admin memakan waktu 1-3 hari kerja</li>
                 <li>Simpan Kode Permohonan unik untuk memantau status secara berkala</li>
                 <li>Pemberitahuan status resmi dikirimkan secara otomatis via email</li>
               </ul>
