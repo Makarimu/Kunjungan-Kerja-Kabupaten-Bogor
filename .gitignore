@@ -26,3 +26,7 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 *.zip
+
+# Local environment files (jangan di-push ke repository)
+envDevlop.bogorkab
+envKunker.bogorkab
