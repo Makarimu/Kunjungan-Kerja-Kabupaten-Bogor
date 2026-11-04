@@ -1253,6 +1253,18 @@ export default function Permohonan() {
   const [file1, setFile1] = useState<File | null>(null);
   const [file2, setFile2] = useState<File | null>(null);
   const [errors, setErrors] = useState<any>({});
+
+  // State Verifikasi OTP Email
+  const [emailOtp, setEmailOtp] = useState('');
+  const [emailOtpSent, setEmailOtpSent] = useState(false);
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [emailOtpToken, setEmailOtpToken] = useState('');
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [otpCooldown, setOtpCooldown] = useState(0);
+  const [otpMessage, setOtpMessage] = useState('');
+  const [otpError, setOtpError] = useState('');
+
   const [busyDates, setBusyDates] = useState<any[]>([]);
   const [blockedDates, setBlockedDates] = useState<string[]>([]);
   const [blockedDetails, setBlockedDetails] = useState<Record<string, any>>({});
@@ -1437,6 +1449,85 @@ export default function Permohonan() {
     }
   }, [showToast, clearError]);
 
+  // Timer hitung mundur resend OTP
+  useEffect(() => {
+    let timer: any = null;
+    if (otpCooldown > 0) {
+      timer = setInterval(() => {
+        setOtpCooldown(c => Math.max(0, c - 1));
+      }, 1000);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [otpCooldown]);
+
+  const handleSendOtp = useCallback(async () => {
+    setOtpError('');
+    setOtpMessage('');
+    if (!form.email) {
+      setOtpError('Silakan masukkan alamat email terlebih dahulu.');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      setOtpError('Format email tidak valid.');
+      return;
+    }
+
+    setSendingOtp(true);
+    try {
+      const res = await api.post('/permohonan/send-otp', { email: form.email });
+      if (res.data?.success) {
+        setEmailOtpSent(true);
+        setOtpMessage(res.data.message || 'Kode verifikasi 6 digit telah dikirim ke email Anda.');
+        setOtpCooldown(60);
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || 'Gagal mengirim kode verifikasi. Silakan periksa kembali email Anda.';
+      setOtpError(msg);
+    } finally {
+      setSendingOtp(false);
+    }
+  }, [form.email]);
+
+  const handleVerifyOtp = useCallback(async () => {
+    setOtpError('');
+    setOtpMessage('');
+    if (!emailOtp || emailOtp.trim().length !== 6) {
+      setOtpError('Masukkan 6 digit kode verifikasi.');
+      return;
+    }
+
+    setVerifyingOtp(true);
+    try {
+      const res = await api.post('/permohonan/verify-otp', {
+        email: form.email,
+        otp: emailOtp.trim()
+      });
+      if (res.data?.success) {
+        setEmailVerified(true);
+        setEmailOtpToken(res.data.verification_token || '');
+        setOtpMessage('Email berhasil diverifikasi!');
+        setOtpError('');
+        clearError('email');
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || 'Kode verifikasi salah atau telah kedaluwarsa.';
+      setOtpError(msg);
+    } finally {
+      setVerifyingOtp(false);
+    }
+  }, [form.email, emailOtp, clearError]);
+
+  const handleResetEmail = useCallback(() => {
+    setEmailVerified(false);
+    setEmailOtpSent(false);
+    setEmailOtp('');
+    setEmailOtpToken('');
+    setOtpMessage('');
+    setOtpError('');
+  }, []);
+
   const validate = useCallback(() => {
     const e: any = {};
     if (!form.nomorSurat) e.nomorSurat = 'Nomor Surat Resmi wajib diisi.';
@@ -1447,6 +1538,7 @@ export default function Permohonan() {
     else if (form.noTelp.replace(/\D/g, '').length < 10) e.noTelp = 'Nomor Telepon tidak valid (min 10 digit).';
     if (!form.email) e.email = 'Email wajib diisi.';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Format email tidak valid.';
+    else if (!emailVerified) e.email = 'Alamat email wajib diverifikasi dengan kode OTP terlebih dahulu.';
     if (!form.dinasId) e.dinasId = 'Dinas/Instansi yang Dituju wajib diisi.';
     if (!form.tujuan) e.tujuan = 'Deskripsi Tujuan/Maksud Kunjungan wajib diisi.';
     if (!form.namaKetuaRombongan) e.namaKetuaRombongan = 'Nama Ketua Rombongan wajib diisi.';
@@ -1458,7 +1550,7 @@ export default function Permohonan() {
     if (!file2) e.file2 = 'Daftar Pertanyaan belum diupload.';
     setErrors(e);
     return Object.keys(e).length === 0;
-  }, [form, file1, file2]);
+  }, [form, file1, file2, emailVerified]);
 
   const goToKonfirmasi = useCallback(() => {
     if (validate()) {
@@ -1512,6 +1604,7 @@ export default function Permohonan() {
       formData.append('jumlah_peserta', form.jumlahPeserta);
       formData.append('rencana_menginap', form.rencanaMenginap);
       formData.append('turnstile_token', token);
+      if (emailOtpToken) formData.append('email_otp_token', emailOtpToken);
       if (form.rencanaMenginap === 'Ya') formData.append('nama_hotel', form.namaHotel);
       formData.append('surat_permohonan', file1 as Blob);
       formData.append('daftar_pertanyaan', file2 as Blob);
@@ -1888,10 +1981,197 @@ export default function Permohonan() {
                           {errors.noTelp && <p style={ERR_MSG_STYLE}>⚠ {errors.noTelp}</p>}
                         </div>
                         <div className="form-group" id="field-email">
-                          <label>Email *</label>
-                          <input type="email" className={errors.email ? 'error' : ''} value={form.email} onChange={e => { setForm((f: any) => ({ ...f, email: e.target.value })); if (e.target.value && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.target.value)) clearError('email'); }} placeholder="email@domain.com" />
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
+                            <label style={{ margin: 0 }}>Email Aktif Pemohon *</label>
+                            {emailVerified ? (
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', fontSize: '11px', fontWeight: '700', padding: '1px 8px', borderRadius: '12px' }}>
+                                ✓ Terverifikasi
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: '11px', color: '#64748B', fontWeight: '500' }}>
+                                Wajib OTP
+                              </span>
+                            )}
+                          </div>
+                          
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <input
+                              type="email"
+                              disabled={emailVerified}
+                              className={errors.email ? 'error' : ''}
+                              value={form.email}
+                              onChange={e => {
+                                const val = e.target.value;
+                                setForm((f: any) => ({ ...f, email: val }));
+                                if (emailVerified) handleResetEmail();
+                                if (val && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) clearError('email');
+                              }}
+                              placeholder="email@domain.com"
+                              style={{
+                                flex: 1,
+                                background: emailVerified ? '#F8FAFC' : 'white',
+                                color: emailVerified ? '#1E293B' : 'inherit',
+                                cursor: emailVerified ? 'not-allowed' : 'text',
+                              }}
+                            />
+                            {emailVerified ? (
+                              <button
+                                type="button"
+                                onClick={handleResetEmail}
+                                title="Ganti alamat email"
+                                style={{
+                                  padding: '0 14px',
+                                  borderRadius: '8px',
+                                  fontSize: '12px',
+                                  fontWeight: '600',
+                                  background: '#EFF6FF',
+                                  color: '#0028B3',
+                                  border: '1px solid #BFDBFE',
+                                  cursor: 'pointer',
+                                  whiteSpace: 'nowrap'
+                                }}
+                              >
+                                Ubah
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled={sendingOtp || !form.email || otpCooldown > 0}
+                                onClick={handleSendOtp}
+                                style={{
+                                  padding: '0 16px',
+                                  borderRadius: '8px',
+                                  fontSize: '12.5px',
+                                  fontWeight: '700',
+                                  background: (sendingOtp || !form.email || otpCooldown > 0) ? '#E2E8F0' : '#0028B3',
+                                  color: (sendingOtp || !form.email || otpCooldown > 0) ? '#94A3B8' : 'white',
+                                  border: 'none',
+                                  cursor: (sendingOtp || !form.email || otpCooldown > 0) ? 'not-allowed' : 'pointer',
+                                  whiteSpace: 'nowrap',
+                                  transition: 'all 0.2s',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px'
+                                }}
+                              >
+                                {sendingOtp ? 'Mengirim...' : (otpCooldown > 0 ? `Tunggu (${otpCooldown}s)` : (emailOtpSent ? 'Kirim Ulang' : 'Kirim OTP'))}
+                              </button>
+                            )}
+                          </div>
                           {errors.email && <p style={ERR_MSG_STYLE}>⚠ {errors.email}</p>}
                         </div>
+
+                        {/* Card OTP Full-Width span 2 agar bentuk grid tetap simetris dan proporsional */}
+                        {emailOtpSent && !emailVerified && (
+                          <div style={{
+                            gridColumn: '1 / -1',
+                            marginTop: '6px',
+                            padding: '16px 20px',
+                            background: 'linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%)',
+                            border: '1.5px solid #7DD3FC',
+                            borderRadius: '12px',
+                            boxShadow: '0 2px 8px rgba(2, 132, 199, 0.08)'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '12px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#0284C7', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+                                  </svg>
+                                </div>
+                                <div>
+                                  <div style={{ fontSize: '13.5px', fontWeight: '700', color: '#0369A1' }}>
+                                    Masukkan 6 Digit Kode Verifikasi
+                                  </div>
+                                  <div style={{ fontSize: '12px', color: '#475569', marginTop: '2px' }}>
+                                    Kode OTP telah dikirim ke <strong>{form.email}</strong> (cek inbox atau folder spam).
+                                  </div>
+                                </div>
+                              </div>
+                              <div style={{ fontSize: '12px', color: '#0284C7', fontWeight: '600', background: '#FFFFFF', padding: '3px 10px', borderRadius: '6px', border: '1px solid #BAE6FD' }}>
+                                ⏱ Berlaku 10 menit
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <input
+                                  type="text"
+                                  maxLength={6}
+                                  inputMode="numeric"
+                                  value={emailOtp}
+                                  onChange={e => {
+                                    const val = e.target.value.replace(/\D/g, '');
+                                    setEmailOtp(val);
+                                    if (otpError) setOtpError('');
+                                  }}
+                                  placeholder="000000"
+                                  style={{
+                                    width: '180px',
+                                    letterSpacing: '6px',
+                                    fontWeight: '800',
+                                    fontSize: '20px',
+                                    fontFamily: 'monospace',
+                                    textAlign: 'center',
+                                    background: 'white',
+                                    border: '2px solid #0284C7',
+                                    borderRadius: '10px',
+                                    padding: '9px 12px',
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  disabled={verifyingOtp || emailOtp.length !== 6}
+                                  onClick={handleVerifyOtp}
+                                  style={{
+                                    padding: '11px 22px',
+                                    borderRadius: '10px',
+                                    fontSize: '13.5px',
+                                    fontWeight: '700',
+                                    background: (verifyingOtp || emailOtp.length !== 6) ? '#E2E8F0' : '#0284C7',
+                                    color: (verifyingOtp || emailOtp.length !== 6) ? '#94A3B8' : 'white',
+                                    border: 'none',
+                                    cursor: (verifyingOtp || emailOtp.length !== 6) ? 'not-allowed' : 'pointer',
+                                    transition: 'all 0.2s',
+                                    boxShadow: (verifyingOtp || emailOtp.length !== 6) ? 'none' : '0 2px 8px rgba(2, 132, 199, 0.25)'
+                                  }}
+                                >
+                                  {verifyingOtp ? 'Memverifikasi...' : 'Verifikasi OTP'}
+                                </button>
+                              </div>
+
+                              <button
+                                type="button"
+                                disabled={sendingOtp || otpCooldown > 0}
+                                onClick={handleSendOtp}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  color: (sendingOtp || otpCooldown > 0) ? '#94A3B8' : '#0284C7',
+                                  fontSize: '12px',
+                                  fontWeight: '600',
+                                  cursor: (sendingOtp || otpCooldown > 0) ? 'not-allowed' : 'pointer',
+                                  textDecoration: 'underline',
+                                  padding: '6px 8px'
+                                }}
+                              >
+                                {otpCooldown > 0 ? `Kirim ulang kode dalam ${otpCooldown} detik` : 'Tidak menerima kode? Kirim ulang'}
+                              </button>
+                            </div>
+
+                            {otpError && (
+                              <p style={{ fontSize: '12px', color: '#DC2626', margin: '10px 0 0', fontWeight: '600' }}>
+                                ⚠ {otpError}
+                              </p>
+                            )}
+                            {otpMessage && !otpError && (
+                              <p style={{ fontSize: '12px', color: '#0369A1', margin: '10px 0 0', fontWeight: '500' }}>
+                                ℹ {otpMessage}
+                              </p>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       <div className="form-title">Detail Kunjungan</div>

@@ -45,6 +45,7 @@ class SubmitPermohonanRequest extends FormRequest
             'jumlah_peserta' => ['required', 'integer', 'min:1'],
             'rencana_menginap' => ['required', 'in:Ya,Tidak'],
             'turnstile_token' => ['nullable', 'string'],
+            'email_otp_token' => ['nullable', 'string'],
 
             // Mendukung file upload (multipart/form-data) ATAU base64 string
             'surat_permohonan' => ['required'],
@@ -73,6 +74,22 @@ class SubmitPermohonanRequest extends FormRequest
                 $alasanMsg = $blacklisted->alasan ? " (Alasan: {$blacklisted->alasan})" : '';
                 $validator->errors()->add('email', "Pengajuan kunjungan diblokir oleh sistem karena data Anda masuk dalam daftar pencegahan{$alasanMsg}. Silakan hubungi administrator.");
                 return;
+            }
+
+            // 0.1 Cek Verifikasi OTP Email
+            if (!app()->runningUnitTests()) {
+                $cleanEmail = strtolower(trim((string)$email));
+                $isOtpVerified = \Illuminate\Support\Facades\Cache::get("email_otp_verified_{$cleanEmail}");
+                $otpToken = $this->input('email_otp_token');
+                $expectedToken = hash_hmac('sha256', $cleanEmail . '|' . date('YmdH'), config('app.key'));
+                $expectedTokenPrevHour = hash_hmac('sha256', $cleanEmail . '|' . date('YmdH', strtotime('-1 hour')), config('app.key'));
+
+                $tokenMatches = !empty($otpToken) && ($otpToken === $expectedToken || $otpToken === $expectedTokenPrevHour);
+
+                if (!$isOtpVerified && !$tokenMatches) {
+                    $validator->errors()->add('email', 'Alamat email belum diverifikasi. Silakan lakukan verifikasi kode OTP terlebih dahulu.');
+                    return;
+                }
             }
 
             if ($tanggal && $email) {

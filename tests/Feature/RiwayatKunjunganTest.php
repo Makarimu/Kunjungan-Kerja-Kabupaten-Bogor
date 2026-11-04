@@ -12,7 +12,7 @@ class RiwayatKunjunganTest extends TestCase
     use RefreshDatabase;
 
     public function test_01_hanya_menampilkan_kunjungan_selesai_dan_ada_review(): void
-    {
+        {
         // 1. Permohonan Selesai + Review (harus tampil)
         $p1 = Permohonan::factory()->create([
             'instansi' => 'Dinas Pendidikan',
