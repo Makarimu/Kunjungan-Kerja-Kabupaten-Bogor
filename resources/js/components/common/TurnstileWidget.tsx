@@ -10,26 +10,6 @@ interface TurnstileWidgetProps {
   style?: React.CSSProperties;
 }
 
-declare global {
-  interface Window {
-    turnstile?: {
-      render: (
-        container: HTMLElement,
-        options: {
-          sitekey: string;
-          callback: (token: string) => void;
-          'error-callback'?: (code?: string) => void;
-          'expired-callback'?: () => void;
-          theme?: string;
-          size?: string;
-        }
-      ) => string;
-      reset: (widgetId: string) => void;
-      remove: (widgetId: string) => void;
-    };
-    onTurnstileLoaded?: () => void;
-  }
-}
 
 export const TurnstileWidget = memo(function TurnstileWidget({
   onVerify,

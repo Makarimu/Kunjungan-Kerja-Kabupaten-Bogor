@@ -106,9 +106,18 @@ class PermohonanController extends Controller
             Log::info("[OTP EMAIL TERKIRIM] Kode verifikasi dikirim ke {$email}");
         } catch (\Throwable $e) {
             Log::error("[OTP EMAIL GAGAL] Gagal mengirim OTP ke {$email}: " . $e->getMessage());
+            Cache::forget($otpKey);
+            Cache::forget($cooldownKey);
+            Cache::forget($cooldownKey . '_expires_at');
+
+            $msg = 'Gagal mengirim email verifikasi. Pastikan alamat email Anda aktif atau coba beberapa saat lagi.';
+            if (str_contains($e->getMessage(), 'unrecognised IP address') || str_contains($e->getMessage(), 'authorised_ips')) {
+                $msg = 'Pengiriman email diblokir oleh Brevo karena IP address belum diotorisasi. Silakan tambahkan IP di akun Brevo (Security > Authorized IPs).';
+            }
+
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal mengirim email verifikasi. Pastikan alamat email Anda aktif atau coba beberapa saat lagi.',
+                'message' => $msg,
             ], 500);
         }
 

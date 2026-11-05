@@ -7,26 +7,6 @@ import { assetUrl, getTurnstileSiteKey } from '../../utils/url';
 const LOGO_URL = assetUrl('/image/icon.png');
 const BG_URL = assetUrl('/image/login_bg.jpg');
 
-declare global {
-  interface Window {
-    turnstile?: {
-      render: (
-        container: string | HTMLElement,
-        options: {
-          sitekey: string;
-          callback?: (token: string) => void;
-          'error-callback'?: () => void;
-          'expired-callback'?: () => void;
-          theme?: 'light' | 'dark' | 'auto';
-          size?: 'normal' | 'compact' | 'flexible';
-        }
-      ) => string;
-      reset: (widgetId?: string) => void;
-      remove: (widgetId?: string) => void;
-    };
-    onTurnstileLoaded?: () => void;
-  }
-}
 
 export default function Login() {
   const navigate = useNavigate();

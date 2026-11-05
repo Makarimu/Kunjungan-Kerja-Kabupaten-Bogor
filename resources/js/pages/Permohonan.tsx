@@ -51,6 +51,7 @@ const Calendar = memo(function Calendar({
   minDateStr,
   userBookedDates = [],
   kuotaPerHari = 2,
+  dinasId = '',
 }: any) {
   const today = useMemo(() => {
     const d = new Date();
@@ -158,11 +159,14 @@ const Calendar = memo(function Calendar({
   }, [selectedPanelDate, getDayClass, blockedDetails, approvedVisits]);
 
   const handleDayClick = useCallback((dateStr: string, cls: string) => {
+    if (!dinasId) {
+      return;
+    }
     setSelectedPanelDate(dateStr);
     if (cls === 'available') {
       onSelect(dateStr);
     }
-  }, [onSelect]);
+  }, [dinasId, onSelect]);
 
   return (
     <div className="card" style={{ overflow: 'visible' }}>
@@ -251,11 +255,28 @@ const Calendar = memo(function Calendar({
           marginTop: '14px',
           borderRadius: '12px',
           overflow: 'hidden',
-          border: panelInfo ? '1px solid #E2E8F0' : '1px dashed #CBD5E1',
+          border: !dinasId ? '1px solid #FDE68A' : panelInfo ? '1px solid #E2E8F0' : '1px dashed #CBD5E1',
           transition: 'all 0.2s ease',
-          background: panelInfo ? '#FFFFFF' : '#F8FAFC',
+          background: !dinasId ? '#FFFBEB' : panelInfo ? '#FFFFFF' : '#F8FAFC',
         }}>
-          {!panelInfo ? (
+          {!dinasId ? (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '12px 14px',
+              color: '#92400E',
+            }}>
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#D97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+              <span style={{ fontSize: '13px', fontWeight: '600' }}>
+                Silakan pilih dinas tujuan terlebih dahulu.
+              </span>
+            </div>
+          ) : !panelInfo ? (
             <div style={{
               display: 'flex',
               alignItems: 'center',
@@ -1383,7 +1404,6 @@ export default function Permohonan() {
 
   const handleDateSelect = useCallback((dateStr: any) => {
     if (!form.dinasId) {
-      setErrors((prev: any) => ({ ...prev, dinasId: 'Silakan pilih dinas tujuan terlebih dahulu.' }));
       setStep(1);
       return;
     }
@@ -1736,7 +1756,7 @@ export default function Permohonan() {
             {/* key berubah saat userBookedDates berubah isinya → memaksa remount Calendar */}
             <div id="calendarColumn">
               <Calendar
-                key={userBookedDates.join(',') + '_' + blockedDates.join(',') + '_' + fullDates.join(',') + '_' + Object.keys(approvedVisits).join(',')}
+                key={userBookedDates.join(',') + '_' + blockedDates.join(',') + '_' + fullDates.join(',') + '_' + Object.keys(approvedVisits).join(',') + '_' + form.dinasId}
                 busyDates={busyDates}
                 blockedDates={blockedDates}
                 blockedDetails={blockedDetails}
@@ -1747,6 +1767,7 @@ export default function Permohonan() {
                 minDateStr={minDateStr}
                 userBookedDates={userBookedDates}
                 kuotaPerHari={dinasKuota}
+                dinasId={form.dinasId}
               />
             </div>
 
@@ -1861,7 +1882,6 @@ export default function Permohonan() {
                             }
                           }}
                         />
-                        {errors.dinasId && <p style={ERR_MSG_STYLE}>⚠ {errors.dinasId}</p>}
 
                         {/* Status guidance card */}
                         {form.dinasId ? (
@@ -2059,6 +2079,9 @@ export default function Permohonan() {
                             )}
                           </div>
                           {errors.email && <p style={ERR_MSG_STYLE}>⚠ {errors.email}</p>}
+                          {otpError && !emailOtpSent && (
+                            <p style={ERR_MSG_STYLE}>⚠ {otpError}</p>
+                          )}
                         </div>
 
                         {/* Card OTP Full-Width span 2 agar bentuk grid tetap simetris dan proporsional */}

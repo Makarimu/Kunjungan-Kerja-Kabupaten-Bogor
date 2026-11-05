@@ -59,7 +59,7 @@
             <td style="background-color: #F8FAFC; border-top: 1px solid #E2E8F0; padding: 20px 30px; text-align: center;">
                 <p style="margin: 0; font-size: 11.5px; color: #94A3B8; line-height: 1.5;">
                     Pesan ini dibuat secara otomatis oleh sistem. Mohon tidak membalas langsung ke alamat email ini.<br>
-                    &copy; {{ date('Y') }} Badan Pendapatan Daerah (Bappenda) Pemerintah Kabupaten Bogor.
+                    &copy; {{ date('Y') }} Sistem Kunjungan Kerja — Pemerintah Kabupaten Bogor.
                 </p>
             </td>
         </tr>
