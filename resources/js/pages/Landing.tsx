@@ -564,7 +564,7 @@ export default function Landing() {
               </div>
               <div className="gov-ekabo-media-box">
                 <img
-                  src={assetUrl('/image/explore_bogor_banner.jpg')}
+                  src={assetUrl('/image/Icon_Kabupaten.jpeg')}
                   alt="Wisata & Akomodasi Kabupaten Bogor"
                   className="gov-ekabo-media-img"
                 />
