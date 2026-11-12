@@ -185,8 +185,39 @@ export default function Dinas() {
         <div style={{display:'flex',gap:'10px',alignItems:'center',flexWrap:'wrap'}}>
           {isSuperAdmin ? (
             <button onClick={handleOpenAdd}
-              style={{display:'flex',alignItems:'center',gap:'8px',padding:'10px 18px',minHeight:'42px',border:'none',borderRadius:'8px',background:'#0028B3',color:'white',cursor:'pointer',fontSize:'13px',fontWeight:'700',fontFamily:'inherit',boxShadow:'0 2px 8px rgba(0,40,179,0.2)'}}>
-              + Tambah Dinas
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                padding: '10px 20px',
+                minHeight: '42px',
+                border: 'none',
+                borderRadius: '8px',
+                background: '#0028B3',
+                color: 'white',
+                cursor: 'pointer',
+                fontSize: '13.5px',
+                fontWeight: '700',
+                fontFamily: 'inherit',
+                boxShadow: '0 2px 8px rgba(0,40,179,0.25)',
+                transition: 'all 0.18s ease'
+              }}>
+              <svg
+                viewBox="0 0 24 24"
+                width="18"
+                height="18"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{ flexShrink: 0 }}
+              >
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              <span>Tambah Dinas</span>
             </button>
           ) : (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '20px', background: '#F1F5F9', color: '#475569', fontSize: '12.5px', fontWeight: '700', border: '1px solid #CBD5E1' }}>
