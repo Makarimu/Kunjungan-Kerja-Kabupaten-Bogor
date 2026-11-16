@@ -14,7 +14,7 @@ class ReviewResource extends JsonResource
             'permohonan_id'    => $this->permohonan_id,
             'kode_permohonan'  => $this->whenLoaded('permohonan', fn() => $this->permohonan->kode, $this->permohonan?->kode),
             'instansi'         => $this->whenLoaded('permohonan', fn() => $this->permohonan->instansi, $this->permohonan?->instansi),
-            'dinas_tujuan'     => $this->whenLoaded('permohonan', fn() => $this->permohonan->dinas_tujuan ?: ($this->permohonan->dinas?->nama ?? 'Badan Pengelolaan Pendapatan Daerah'), $this->permohonan?->dinas_tujuan ?: ($this->permohonan?->dinas?->nama ?? 'Badan Pengelolaan Pendapatan Daerah')),
+            'dinas_tujuan'     => $this->whenLoaded('permohonan', fn() => $this->permohonan->dinas?->nama ?: ($this->permohonan->dinas_tujuan ?: 'Pemerintah Kabupaten Bogor'), $this->permohonan?->dinas?->nama ?: ($this->permohonan?->dinas_tujuan ?: 'Pemerintah Kabupaten Bogor')),
             'nama_pic'         => $this->whenLoaded('permohonan', fn() => $this->permohonan->nama_pic, $this->permohonan?->nama_pic),
             'rating'           => $this->rating,
             'review'           => $this->review,

@@ -67,7 +67,7 @@ class ReviewRepository implements ReviewRepositoryInterface
     public function getApproved(int $limit = 20): Collection
     {
         return Review::approved()
-            ->with(['permohonan:id,instansi,nama_pic'])
+            ->with(['permohonan:id,instansi,nama_pic,dinas_id,dinas_tujuan', 'permohonan.dinas:id,nama,singkatan'])
             ->orderBy('created_at', 'desc')
             ->limit($limit)
             ->get();
