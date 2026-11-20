@@ -23,7 +23,7 @@ class ExportPermohonanRequest extends FormRequest
                 'after_or_equal:start_date',
             ],
             'status'     => ['nullable', 'array'],
-            'status.*'   => ['string', 'in:Pending,Revisi,Disetujui,Ditolak'],
+            'status.*'   => ['string', 'in:Pending,Revisi,Disetujui,Ditolak,Selesai'],
         ];
     }
 

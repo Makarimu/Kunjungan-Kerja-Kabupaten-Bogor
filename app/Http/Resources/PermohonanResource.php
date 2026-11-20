@@ -45,6 +45,7 @@ class PermohonanResource extends JsonResource
             'status' => $this->status,
             'keterangan_admin' => $this->keterangan_admin,
             'bisa_direvisi' => $this->bisa_direvisi,
+            'bisa_revisi' => $this->bisa_direvisi,
             'narasumber' => $this->narasumber,
             'jam_penerimaan' => $this->jam_penerimaan,
             'tgl_pengajuan_awal' => $this->tgl_pengajuan_awal,

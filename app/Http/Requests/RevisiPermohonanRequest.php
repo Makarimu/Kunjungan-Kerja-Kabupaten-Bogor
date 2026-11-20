@@ -26,6 +26,27 @@ class RevisiPermohonanRequest extends FormRequest
                 ]);
             }
         }
+
+        $kode = $this->route('kode');
+        $current = $kode ? \App\Models\Permohonan::where('kode', strtoupper($kode))->first() : null;
+
+        $updates = [];
+        if ($current) {
+            if (!$this->filled('rencana_menginap') && !empty($current->rencana_menginap)) {
+                $updates['rencana_menginap'] = $current->rencana_menginap;
+            }
+            if (!$this->filled('jumlah_peserta') && !empty($current->jumlah_peserta)) {
+                $updates['jumlah_peserta'] = $current->jumlah_peserta;
+            }
+            $targetRencana = $this->input('rencana_menginap') ?? ($updates['rencana_menginap'] ?? $current->rencana_menginap);
+            if ($targetRencana === 'Ya' && !$this->filled('nama_hotel') && !empty($current->nama_hotel)) {
+                $updates['nama_hotel'] = $current->nama_hotel;
+            }
+        }
+
+        if (!empty($updates)) {
+            $this->merge($updates);
+        }
     }
 
     public function rules(): array

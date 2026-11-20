@@ -7,6 +7,7 @@ const STATUS_OPTIONS = [
   { label: 'Diproses (Revisi)', value: 'Revisi' },
   { label: 'Disetujui', value: 'Disetujui' },
   { label: 'Ditolak', value: 'Ditolak' },
+  { label: 'Selesai', value: 'Selesai' },
 ];
 
 export default function ExportPermohonanModal({ onClose }: { onClose: () => void }) {

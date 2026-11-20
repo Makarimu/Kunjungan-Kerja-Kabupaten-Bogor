@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, memo } from 'react';
+import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import PublicLayout from '../layouts/PublicLayout';
 import api from '../services/api';
@@ -30,8 +30,11 @@ function statusClass(s: any) {
   return 'status-pending';
 }
 
-function statusLabel(s: any) {
+function statusLabel(s: any, bisaRevisi?: any) {
   if (s === 'Ringkasan_Terkirim') return 'Ringkasan Tersedia';
+  if (s === 'Ditolak') {
+    return bisaRevisi === 'Ya' ? 'Ditolak (Bisa Revisi)' : 'Ditolak Permanen';
+  }
   return s;
 }
 
@@ -223,7 +226,7 @@ function mapApiToResult(d: any, kontak: any) {
     namaHotel: d.nama_hotel,
     status: d.status,
     keterangan: d.keterangan_admin,
-    bisaRevisi: d.bisa_revisi,
+    bisaRevisi: d.bisa_direvisi || d.bisa_revisi || 'Tidak',
     narasumber: d.narasumber,
     jamPenerimaan: d.jam_penerimaan,
     linkSurat1: d.link_surat_1,
@@ -367,7 +370,8 @@ const RingkasanPdfCard = memo(function RingkasanPdfCard({ result }: { result: an
 function LangkahCard({ data, onRevisi, onUploadBukti }: any) {
   const [buktiFile, setBuktiFile] = useState<File | null>(null);
   const { status, rencanaMenginap, linkBuktiMenginap, bisaRevisi, hasReview, ringkasanReady, pdf_ready } = data;
-  const canRevisi = status === 'Ditolak' && bisaRevisi !== 'Tidak';
+  const canRevisi = status === 'Ditolak' && bisaRevisi === 'Ya';
+  const isTolakPermanen = status === 'Ditolak' && bisaRevisi !== 'Ya';
   const needsMenginap = rencanaMenginap === 'Ya';
   const sudahUploadBukti = !!linkBuktiMenginap;
   const isPdfReady = !!(pdf_ready || ringkasanReady);
@@ -376,42 +380,92 @@ function LangkahCard({ data, onRevisi, onUploadBukti }: any) {
   const isKondisiB = (status === 'Selesai' || status === 'Ringkasan_Terkirim') && hasReview && !isPdfReady;
   const isKondisiA = (status === 'Selesai' || status === 'Ringkasan_Terkirim') && !hasReview;
 
-  const cardBg = isKondisiC ? '#F0FDF4' : isKondisiB ? '#FFFBEB' : isKondisiA ? '#FFFBEB' : '#ffffff';
-  const cardBorder = isKondisiC ? '1px solid #86EFAC' : (isKondisiB || isKondisiA) ? '1px solid #FCD34D' : '1px solid rgba(228, 231, 237, 0.8)';
-  const titleColor = isKondisiC ? '#15803D' : (isKondisiB || isKondisiA) ? '#92400E' : '#0F172A';
+  let cardBg = '#ffffff';
+  let cardBorder = '1px solid rgba(228, 231, 237, 0.8)';
+  let titleColor = '#0F172A';
+
+  if (isKondisiC) {
+    cardBg = '#F0FDF4';
+    cardBorder = '1px solid #86EFAC';
+    titleColor = '#15803D';
+  } else if (isKondisiB || isKondisiA) {
+    cardBg = '#FFFBEB';
+    cardBorder = '1px solid #FCD34D';
+    titleColor = '#92400E';
+  } else if (canRevisi) {
+    cardBg = '#FFFBEB';
+    cardBorder = '1.5px solid #FCD34D';
+    titleColor = '#B45309';
+  } else if (isTolakPermanen) {
+    cardBg = '#FEF2F2';
+    cardBorder = '1.5px solid #FCA5A5';
+    titleColor = '#B91C1C';
+  }
 
   return (
     <div style={{ background: cardBg, border: cardBorder, borderRadius: '16px', padding: '24px', marginBottom: '28px', boxShadow: 'var(--shadow-sm)' }}>
-      <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
-        <div style={{ flex: '1 1 220px', minWidth: 0 }}>
+      <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ flex: '1 1 240px', minWidth: 0 }}>
           <h4 style={{ fontSize: '15.5px', fontWeight: '700', marginBottom: '10px', color: titleColor }}>
-            {isKondisiC ? 'Ringkasan Hasil Kunjungan Sudah Tersedia' : isKondisiB ? 'Menunggu Ringkasan Hasil Kunjungan' : 'Langkah Selanjutnya'}
+            {isKondisiC ? 'Ringkasan Hasil Kunjungan Sudah Tersedia' :
+             isKondisiB ? 'Menunggu Ringkasan Hasil Kunjungan' :
+             canRevisi ? 'Permohonan Perlu Direvisi' :
+             isTolakPermanen ? 'Permohonan Ditolak Permanen' :
+             'Langkah Selanjutnya'}
           </h4>
-          {status === 'Pending' && <p style={{ fontSize: '13.5px', color: '#64748B', lineHeight: '1.7' }}>Permohonan Anda sedang dalam proses review oleh admin. Mohon menunggu konfirmasi melalui email.</p>}
-          {status === 'Revisi' && <p style={{ fontSize: '13.5px', color: '#64748B', lineHeight: '1.7' }}>Revisi permohonan Anda telah dikirim dan sedang menunggu review ulang dari admin.</p>}
-          {status === 'Ditolak' && (
-            <>
-              <p style={{ fontSize: '13.5px', color: '#64748B', lineHeight: '1.7' }}>Permohonan Anda ditolak. Silakan periksa keterangan admin untuk detail alasan penolakan.</p>
-              {!canRevisi && <p style={{ fontSize: '13.5px', color: '#64748B', lineHeight: '1.7', marginTop: '8px' }}>Permohonan ini tidak dapat direvisi. Silakan ajukan permohonan baru jika masih diperlukan.</p>}
-            </>
+          {status === 'Pending' && <p style={{ fontSize: '13.5px', color: '#64748B', lineHeight: '1.7', margin: 0 }}>Permohonan Anda sedang dalam proses review oleh admin. Mohon menunggu konfirmasi melalui email.</p>}
+          {status === 'Revisi' && <p style={{ fontSize: '13.5px', color: '#64748B', lineHeight: '1.7', margin: 0 }}>Revisi permohonan Anda telah dikirim dan sedang menunggu review ulang dari admin.</p>}
+          {canRevisi && (
+            <p style={{ fontSize: '13.5px', color: '#92400E', lineHeight: '1.7', margin: 0 }}>
+              Permohonan Anda ditolak dengan <strong>opsi perbaikan data/jadwal</strong>. Silakan periksa catatan admin di bawah, lalu klik tombol <strong>Revisi Permohonan</strong> untuk memperbaiki data.
+            </p>
           )}
-          {status === 'Disetujui' && !needsMenginap && <p style={{ fontSize: '13.5px', color: '#64748B', lineHeight: '1.7' }}>Kunjungan telah disetujui. Silakan datang sesuai jadwal kunjungan yang telah ditentukan.</p>}
-          {status === 'Disetujui' && needsMenginap && !sudahUploadBukti && <p style={{ fontSize: '13.5px', color: '#64748B', lineHeight: '1.7' }}>Kunjungan telah disetujui. Karena Anda berencana menginap, silakan unggah bukti pemesanan penginapan.</p>}
-          {status === 'Disetujui' && needsMenginap && sudahUploadBukti && <p style={{ fontSize: '13.5px', color: '#64748B', lineHeight: '1.7' }}>Kunjungan telah disetujui. Bukti pemesanan penginapan telah diunggah. Silakan datang sesuai jadwal.</p>}
-          {isKondisiA && <p style={{ fontSize: '13.5px', color: '#78350F', lineHeight: '1.7' }}>Kunjungan kerja telah selesai dilaksanakan. Silakan berikan Rating &amp; Review pada kolom di bawah ini terlebih dahulu.</p>}
-          {isKondisiB && <p style={{ fontSize: '13.5px', color: '#78350F', lineHeight: '1.7' }}>Terima kasih atas Rating &amp; Review. Ringkasan hasil kunjungan sedang diproses oleh Admin.</p>}
-          {isKondisiC && <p style={{ fontSize: '13.5px', color: '#166534', lineHeight: '1.7' }}>Ringkasan hasil kunjungan kerja telah tersedia. Silakan mengunduh PDF pada bagian Ringkasan Hasil Kunjungan.</p>}
+          {isTolakPermanen && (
+            <p style={{ fontSize: '13.5px', color: '#991B1B', lineHeight: '1.7', margin: 0 }}>
+              Permohonan kunjungan Anda <strong>ditolak permanen</strong> oleh Admin dan <strong>tidak dapat direvisi</strong>. Silakan ajukan permohonan baru jika agenda kunjungan masih diperlukan.
+            </p>
+          )}
+          {status === 'Disetujui' && !needsMenginap && <p style={{ fontSize: '13.5px', color: '#64748B', lineHeight: '1.7', margin: 0 }}>Kunjungan telah disetujui. Silakan datang sesuai jadwal kunjungan yang telah ditentukan.</p>}
+          {status === 'Disetujui' && needsMenginap && !sudahUploadBukti && <p style={{ fontSize: '13.5px', color: '#64748B', lineHeight: '1.7', margin: 0 }}>Kunjungan telah disetujui. Karena Anda berencana menginap, silakan unggah bukti pemesanan penginapan.</p>}
+          {status === 'Disetujui' && needsMenginap && sudahUploadBukti && <p style={{ fontSize: '13.5px', color: '#64748B', lineHeight: '1.7', margin: 0 }}>Kunjungan telah disetujui. Bukti pemesanan penginapan telah diunggah. Silakan datang sesuai jadwal.</p>}
+          {isKondisiA && <p style={{ fontSize: '13.5px', color: '#78350F', lineHeight: '1.7', margin: 0 }}>Kunjungan kerja telah selesai dilaksanakan. Silakan berikan Rating &amp; Review pada kolom di bawah ini terlebih dahulu.</p>}
+          {isKondisiB && <p style={{ fontSize: '13.5px', color: '#78350F', lineHeight: '1.7', margin: 0 }}>Terima kasih atas Rating &amp; Review. Ringkasan hasil kunjungan sedang diproses oleh Admin.</p>}
+          {isKondisiC && <p style={{ fontSize: '13.5px', color: '#166534', lineHeight: '1.7', margin: 0 }}>Ringkasan hasil kunjungan kerja telah tersedia. Silakan mengunduh PDF pada bagian Ringkasan Hasil Kunjungan.</p>}
         </div>
 
         {canRevisi && (
-          <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+          <div style={{ flex: '0 0 auto', minWidth: '180px' }}>
             <button
               className="btn-primary"
               onClick={onRevisi}
-              style={{ width: '100%', minHeight: '44px' }}
+              style={{ width: '100%', minHeight: '44px', padding: '10px 20px', borderRadius: '8px', fontWeight: '700' }}
             >
               Revisi Permohonan
             </button>
+          </div>
+        )}
+        {isTolakPermanen && (
+          <div style={{ flex: '0 0 auto', minWidth: '180px' }}>
+            <a
+              href="/permohonan"
+              className="btn btn-outline"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '100%',
+                minHeight: '44px',
+                padding: '10px 18px',
+                borderRadius: '8px',
+                fontWeight: '700',
+                textDecoration: 'none',
+                background: '#FFFFFF',
+                color: '#B91C1C',
+                border: '1.5px solid #FCA5A5'
+              }}
+            >
+              Ajukan Permohonan Baru
+            </a>
           </div>
         )}
         {status === 'Disetujui' && needsMenginap && (
@@ -451,10 +505,6 @@ function LangkahCard({ data, onRevisi, onUploadBukti }: any) {
 }
 
 function RevisiDialog({ open, data, onClose, onSubmit }: any) {
-  const today = new Date();
-  const minDate = new Date();
-  minDate.setDate(today.getDate() + 1);
-
   const [form, setForm] = useState<any>({});
   const [selectedDate, setSelectedDate] = useState('');
   const [viewDate, setViewDate] = useState(new Date());
@@ -462,37 +512,111 @@ function RevisiDialog({ open, data, onClose, onSubmit }: any) {
   const [file2, setFile2] = useState<File | null>(null);
   const [dinasList, setDinasList] = useState<any[]>([]);
 
+  // Kalender availability & konfigurasi H-min
+  const [minDateStr, setMinDateStr] = useState<string>('');
+  const [minHari, setMinHari] = useState<number>(1);
+  const [busyDates, setBusyDates] = useState<string[]>([]);
+  const [blockedDates, setBlockedDates] = useState<string[]>([]);
+  const [fullDates, setFullDates] = useState<string[]>([]);
+  const [userBookedDates, setUserBookedDates] = useState<string[]>([]);
+
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+
+  const minDate = useMemo(() => {
+    if (minDateStr) {
+      const [y, m, d] = minDateStr.split('-').map(Number);
+      return new Date(y, m - 1, d);
+    }
+    const d = new Date();
+    d.setDate(d.getDate() + (minHari || 1));
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, [minDateStr, minHari]);
+
+  // Ambil daftar dinas dan konfigurasi min_hari publik
   useEffect(() => {
     if (open) {
       api.get('/dinas')
         .then(res => {
-          if (res.data.success) {
+          if (res.data?.success) {
             setDinasList(res.data.data);
           }
         })
         .catch(err => console.error('Gagal mengambil daftar dinas:', err));
+
+      api.get('/settings/public')
+        .then(res => {
+          if (res.data?.data?.min_hari_kunjungan) {
+            setMinHari(Number(res.data.data.min_hari_kunjungan));
+          }
+        })
+        .catch(() => {});
     }
   }, [open]);
+
+  // Ambil jadwal terpakai, diblokir, kuota penuh, dan min_date dari server
+  useEffect(() => {
+    if (!open) return;
+    const targetDinasId = form.dinasId || data?.dinasId || data?.dinas_id;
+    const targetEmail = form.email || data?.email;
+    const params: any = {};
+    if (targetDinasId) params.dinas_id = targetDinasId;
+    if (targetEmail) params.email = targetEmail;
+
+    api.get('/permohonan/tanggal-terpakai', { params })
+      .then(res => {
+        if (res.data.min_date) {
+          setMinDateStr(res.data.min_date);
+        }
+        if (res.data.min_hari !== undefined) {
+          setMinHari(Number(res.data.min_hari));
+        }
+        if (res.data.data) {
+          setBusyDates(res.data.data);
+        }
+        if (res.data.blocked_dates) {
+          setBlockedDates(res.data.blocked_dates);
+        }
+        if (res.data.full_dates) {
+          setFullDates(res.data.full_dates);
+        }
+        if (res.data.user_booked_dates) {
+          const currentTgl = (data?.tanggalKunjungan || data?.tanggal_kunjungan || '').substring(0, 10);
+          setUserBookedDates(res.data.user_booked_dates.filter((d: string) => d !== currentTgl));
+        }
+      })
+      .catch(err => console.error('Gagal mengambil jadwal kalender:', err));
+  }, [open, form.dinasId, form.email, data]);
 
   useEffect(() => {
     if (data) {
       setForm({
-        nomorSurat: data.nomorSurat || '',
-        namaPic: data.namaPic || '',
+        nomorSurat: data.nomorSurat || data.nomor_surat || '',
+        namaPic: data.namaPic || data.nama_pic || '',
         instansi: data.instansi || '',
-        jabatanPic: data.jabatanPic || '',
-        noTelp: data.noTelp || '',
+        jabatanPic: data.jabatanPic || data.jabatan_pic || '',
+        noTelp: data.noTelp || data.no_telp || '',
         email: data.email || '',
         tujuan: data.tujuan || '',
-        dinasTujuan: data.dinasTujuan || '',
-        dinasId: data.dinasId !== null && data.dinasId !== undefined ? data.dinasId.toString() : '',
-        namaKetuaRombongan: data.namaKetuaRombongan || '',
-        jabatanKetuaRombongan: data.jabatanKetuaRombongan || '',
-        jumlahPeserta: data.jumlahPeserta || '',
-        rencanaMenginap: data.rencanaMenginap || '',
-        namaHotel: data.namaHotel || '',
+        dinasTujuan: data.dinasTujuan || data.dinas_tujuan || '',
+        dinasId: data.dinasId !== null && data.dinasId !== undefined ? data.dinasId.toString() : (data.dinas_id ? data.dinas_id.toString() : ''),
+        namaKetuaRombongan: data.namaKetuaRombongan || data.nama_ketua_rombongan || '',
+        jabatanKetuaRombongan: data.jabatanKetuaRombongan || data.jabatan_ketua_rombongan || '',
+        jumlahPeserta: data.jumlahPeserta || data.jumlah_peserta || '1',
+        rencanaMenginap: data.rencanaMenginap || data.rencana_menginap || 'Tidak',
+        namaHotel: data.namaHotel || data.nama_hotel || '',
       });
-      setSelectedDate(data.tanggalKunjungan || '');
+      const rawDate = data.tanggalKunjungan || data.tanggal_kunjungan || '';
+      const cleanDate = rawDate ? rawDate.substring(0, 10) : '';
+      setSelectedDate(cleanDate);
+      if (cleanDate) {
+        const [y, m] = cleanDate.split('-').map(Number);
+        if (y && m) setViewDate(new Date(y, m - 1, 1));
+      }
     }
   }, [data, open]);
 
@@ -533,20 +657,69 @@ function RevisiDialog({ open, data, onClose, onSubmit }: any) {
               const date = new Date(dateStr + 'T00:00:00');
               const dow = date.getDay();
               let cls = 'available';
-              if (dow === 0 || dow === 6) cls = 'weekend';
-              else if (date < minDate) cls = date < today ? 'past' : 'too-soon';
+
+              if (date < today) {
+                cls = 'past';
+              } else if (dow === 0 || dow === 6) {
+                cls = 'weekend';
+              } else if (userBookedDates.includes(dateStr)) {
+                cls = 'user-booked';
+              } else if (blockedDates.includes(dateStr)) {
+                cls = 'blocked';
+              } else if (fullDates.includes(dateStr) || busyDates.includes(dateStr)) {
+                cls = 'busy';
+              } else if (date < minDate) {
+                cls = 'too-soon';
+              }
+
               const isSelected = selectedDate === dateStr;
               return (
-                <div key={dateStr} className={`cal-day ${cls}${isSelected ? ' selected' : ''}`}
-                  onClick={() => { if (cls === 'available') setSelectedDate(dateStr); }}>
+                <div
+                  key={dateStr}
+                  className={`cal-day ${cls}${isSelected ? ' selected' : ''}`}
+                  onClick={() => {
+                    if (cls === 'available' || (cls === 'user-booked' && selectedDate === dateStr)) {
+                      setSelectedDate(dateStr);
+                    }
+                  }}
+                  title={
+                    cls === 'too-soon' ? `Minimal pengajuan H-${minHari || 7}` :
+                    cls === 'weekend' ? 'Hari Libur (Sabtu/Minggu)' :
+                    cls === 'blocked' ? 'Tanggal Diblokir oleh Instansi' :
+                    cls === 'busy' ? 'Kuota Kunjungan Penuh' :
+                    cls === 'user-booked' ? 'Email Anda sudah memiliki kunjungan pada tanggal ini' :
+                    cls === 'past' ? 'Tanggal sudah lewat' : 'Tersedia'
+                  }
+                >
                   {day}
                 </div>
               );
             })}
           </div>
+
+          {/* Kalender Legend */}
+          <div className="cal-legend" style={{ marginTop: '10px', fontSize: '11px', display: 'flex', flexWrap: 'wrap', gap: '8px 12px' }}>
+            <div className="legend-item" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <div style={{ width: '10px', height: '10px', borderRadius: '3px', background: '#C5DBFF', border: '1px solid #75C3FF' }} />
+              <span>Tersedia</span>
+            </div>
+            <div className="legend-item" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <div style={{ width: '10px', height: '10px', borderRadius: '3px', background: '#F8FAFC', border: '1px solid #CBD5E1' }} />
+              <span>Terlalu Dekat (Min H-{minHari})</span>
+            </div>
+            <div className="legend-item" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <div style={{ width: '10px', height: '10px', borderRadius: '3px', background: '#FEE2E2', border: '1px solid #EF4444' }} />
+              <span>Penuh</span>
+            </div>
+            <div className="legend-item" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <div style={{ width: '10px', height: '10px', borderRadius: '3px', background: '#E2E8F0', border: '1px solid #94A3B8' }} />
+              <span>Diblokir / Libur</span>
+            </div>
+          </div>
+
           {selectedDate && (
-            <div style={{ marginTop: '10px', padding: '10px 14px', background: '#C5DBFF', borderLeft: '3px solid #0028B3', color: '#001178', borderRadius: '8px', fontSize: '12px' }}>
-              Tanggal terpilih: <strong>{selectedDate}</strong>
+            <div style={{ marginTop: '12px', padding: '10px 14px', background: '#C5DBFF', borderLeft: '3px solid #0028B3', color: '#001178', borderRadius: '8px', fontSize: '12px' }}>
+              Tanggal terpilih: <strong>{formatTanggal(selectedDate)}</strong> ({selectedDate})
             </div>
           )}
 
@@ -585,6 +758,52 @@ function RevisiDialog({ open, data, onClose, onSubmit }: any) {
             <div className="form-group"><label>Nama Ketua Rombongan *</label><input type="text" value={form.namaKetuaRombongan || ''} onChange={e => setForm((f: any) => ({ ...f, namaKetuaRombongan: e.target.value }))} /></div>
             <div className="form-group"><label>Jabatan Ketua Rombongan *</label><input type="text" value={form.jabatanKetuaRombongan || ''} onChange={e => setForm((f: any) => ({ ...f, jabatanKetuaRombongan: e.target.value }))} /></div>
           </div>
+          <div className="form-grid" style={{ marginTop: '14px' }}>
+            <div className="form-group">
+              <label>Jumlah Peserta *</label>
+              <input
+                type="number"
+                min="1"
+                value={form.jumlahPeserta || ''}
+                onChange={e => setForm((f: any) => ({ ...f, jumlahPeserta: e.target.value }))}
+                placeholder="Jumlah peserta"
+              />
+            </div>
+            <div className="form-group">
+              <label>Rencana Menginap *</label>
+              <select
+                value={form.rencanaMenginap || 'Tidak'}
+                onChange={e => setForm((f: any) => ({ ...f, rencanaMenginap: e.target.value }))}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  border: '1.5px solid #E4E7ED',
+                  fontSize: '13.5px',
+                  background: '#FFFFFF',
+                  color: '#0F172A',
+                  outline: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="Tidak">Tidak Menginap</option>
+                <option value="Ya">Ya, Berencana Menginap</option>
+              </select>
+            </div>
+          </div>
+          {form.rencanaMenginap === 'Ya' && (
+            <div className="form-grid full" style={{ marginTop: '14px' }}>
+              <div className="form-group">
+                <label>Nama Hotel / Tempat Penginapan *</label>
+                <input
+                  type="text"
+                  value={form.namaHotel || ''}
+                  onChange={e => setForm((f: any) => ({ ...f, namaHotel: e.target.value }))}
+                  placeholder="Contoh: Hotel Aston Bogor / Pesona Alam Resort"
+                />
+              </div>
+            </div>
+          )}
 
           <div className="form-title" style={{ marginTop: '20px' }}>Surat Pendukung (Opsional)</div>
           <p style={{ fontSize: '12px', color: '#6B7280', marginBottom: '12px' }}>Kosongkan jika ingin mempertahankan file lama.</p>
@@ -639,7 +858,17 @@ function RevisiDialog({ open, data, onClose, onSubmit }: any) {
         </div>
         <div className="revisi-footer">
           <button className="btn-revisi-batal" onClick={onClose}>Batal</button>
-          <button className="btn-revisi-kirim" disabled={!selectedDate} onClick={() => onSubmit({ ...form, tanggalKunjungan: selectedDate, file1, file2 })}>
+          <button
+            className="btn-revisi-kirim"
+            disabled={!selectedDate}
+            onClick={() => {
+              if (selectedDate && minDateStr && selectedDate < minDateStr) {
+                alert(`Tanggal kunjungan minimal H-${minHari} (mulai ${formatTanggal(minDateStr)}). Silakan pilih tanggal yang tersedia.`);
+                return;
+              }
+              onSubmit({ ...form, tanggalKunjungan: selectedDate, file1, file2 });
+            }}
+          >
             Kirim Revisi
           </button>
         </div>
@@ -794,6 +1023,11 @@ export default function Status() {
 
   const handleRevisiSubmit = useCallback(async (data: any) => {
     try {
+      if (data.rencanaMenginap === 'Ya' && !data.namaHotel?.trim()) {
+        showToast('Nama hotel wajib diisi jika berencana menginap.', 'error');
+        return;
+      }
+
       const formData = new FormData();
       formData.append('tanggal_kunjungan', data.tanggalKunjungan);
       formData.append('nomor_surat', data.nomorSurat);
@@ -806,9 +1040,9 @@ export default function Status() {
       formData.append('dinas_id', data.dinasId);
       formData.append('nama_ketua_rombongan', data.namaKetuaRombongan);
       formData.append('jabatan_ketua_rombongan', data.jabatanKetuaRombongan);
-      formData.append('jumlah_peserta', data.jumlahPeserta);
-      formData.append('rencana_menginap', data.rencanaMenginap);
-      if (data.rencanaMenginap === 'Ya') formData.append('nama_hotel', data.namaHotel || '');
+      formData.append('jumlah_peserta', data.jumlahPeserta || '1');
+      formData.append('rencana_menginap', data.rencanaMenginap || 'Tidak');
+      if (data.rencanaMenginap === 'Ya') formData.append('nama_hotel', (data.namaHotel || '').trim());
       if (data.file1) formData.append('surat_permohonan', data.file1);
       if (data.file2) formData.append('daftar_pertanyaan', data.file2);
 
@@ -1096,7 +1330,7 @@ export default function Status() {
                       <p style={{ fontSize: '10px', color: '#6B7280', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Kode Permohonan</p>
                       <p style={{ fontSize: '17px', fontWeight: '800', color: '#001178', letterSpacing: '1px' }}>{result.kode}</p>
                     </div>
-                    <span className={`status-badge ${statusClass(result.status)}`}>{statusLabel(result.status)}</span>
+                    <span className={`status-badge ${statusClass(result.status)}`}>{statusLabel(result.status, result.bisaRevisi)}</span>
                   </div>
 
                   {/* Langkah Selanjutnya */}
@@ -1156,7 +1390,7 @@ export default function Status() {
                         const isApproved = ['Disetujui', 'Selesai', 'Ringkasan_Terkirim'].includes(result.status);
                         const isRejected = result.status === 'Ditolak';
                         const bg = isApproved ? '#0028B3' : isRejected ? '#B91C1C' : '#E4E7ED';
-                        const title = isApproved ? 'Disetujui' : isRejected ? 'Ditolak' : 'Keputusan Final';
+                        const title = isApproved ? 'Disetujui' : isRejected ? (result.bisaRevisi === 'Ya' ? 'Ditolak (Revisi)' : 'Ditolak Permanen') : 'Keputusan Final';
                         const date = result.tglDisetujui ? formatDateTime(result.tglDisetujui) : result.tglDiproses ? formatDateTime(result.tglDiproses) : 'Belum diproses';
                         return (
                           <div className="stepper-item">

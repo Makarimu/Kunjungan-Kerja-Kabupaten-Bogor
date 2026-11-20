@@ -10,13 +10,14 @@ function formatTanggal(s) {
   catch { return s; }
 }
 
-function StatusBadge({ status }) {
-  const cfg = {
+function StatusBadge({ status, bisaRevisi }: any) {
+  const cfg: any = {
     Pending: { bg: '#F1F5F9', color: '#475569', border: '#CBD5E1', label: 'Menunggu' },
     Menunggu: { bg: '#F1F5F9', color: '#475569', border: '#CBD5E1', label: 'Menunggu' },
     Disetujui: { bg: '#DCFCE7', color: '#15803D', border: '#86EFAC', label: 'Disetujui' },
     Selesai: { bg: '#D1FAE5', color: '#065F46', border: '#059669', label: 'Selesai' },
-    Ditolak: { bg: '#FEE2E2', color: '#B91C1C', border: '#FCA5A5', label: 'Ditolak' },
+    Ringkasan_Terkirim: { bg: '#DCFCE7', color: '#166534', border: '#86EFAC', label: 'Ringkasan Terkirim' },
+    Ditolak: { bg: '#FEE2E2', color: '#B91C1C', border: '#FCA5A5', label: bisaRevisi === 'Ya' ? 'Ditolak (Bisa Revisi)' : 'Ditolak (Permanen)' },
     Revisi: { bg: '#FEF9C3', color: '#854D0E', border: '#FACC15', label: 'Revisi' },
   };
   const s = cfg[status] || cfg.Pending;
@@ -270,7 +271,9 @@ function ModalEdit({ data, onClose, onSuccess }) {
     dinas_id: data.dinas_id !== null && data.dinas_id !== undefined ? data.dinas_id.toString() : '',
     nama_ketua_rombongan: data.nama_ketua_rombongan || '',
     jabatan_ketua_rombongan: data.jabatan_ketua_rombongan || '',
-    jumlah_peserta: data.jumlah_peserta || '',
+    jumlah_peserta: data.jumlah_peserta || '1',
+    rencana_menginap: data.rencana_menginap || 'Tidak',
+    nama_hotel: data.nama_hotel || '',
   });
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
@@ -322,6 +325,20 @@ function ModalEdit({ data, onClose, onSuccess }) {
         <FField label="Jumlah Peserta" name="jumlah_peserta" type="number" />
         <FField label="Nama Ketua Rombongan" name="nama_ketua_rombongan" required />
         <FField label="Jabatan Ketua Rombongan" name="jabatan_ketua_rombongan" required />
+        <div>
+          <label style={{ fontSize: '11px', fontWeight: '700', color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '5px' }}>Rencana Menginap *</label>
+          <select
+            value={form.rencana_menginap || 'Tidak'}
+            onChange={(e) => setForm((f: any) => ({ ...f, rencana_menginap: e.target.value }))}
+            style={{ width: '100%', border: '1px solid #D9DEE5', borderRadius: '8px', padding: '8px 11px', fontSize: '13px', fontFamily: 'inherit', boxSizing: 'border-box', background: 'white' }}
+          >
+            <option value="Tidak">Tidak Menginap</option>
+            <option value="Ya">Ya, Berencana Menginap</option>
+          </select>
+        </div>
+        {form.rencana_menginap === 'Ya' && (
+          <FField label="Nama Hotel / Penginapan" name="nama_hotel" required />
+        )}
       </div>
       <div style={{ marginBottom: '12px' }}>
         <label style={{ fontSize: '11px', fontWeight: '700', color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '5px' }}>Dinas Tujuan <span style={{ color: '#e74c3c' }}> *</span></label>
@@ -749,7 +766,7 @@ export default function ProsesPermohonanModal({ data: initialData, onClose, onSu
             <div style={{ padding: '8px 4px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
               <div>
                 <div style={{ fontSize: '9px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Status Permohonan</div>
-                <StatusBadge status={data.status} />
+                <StatusBadge status={data.status} bisaRevisi={data.bisa_direvisi || data.bisa_revisi} />
               </div>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 {(data.status === 'Pending' || data.status === 'Revisi') && (

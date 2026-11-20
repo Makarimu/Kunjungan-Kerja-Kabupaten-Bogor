@@ -13,9 +13,9 @@ class RiwayatKunjunganRepository implements RiwayatKunjunganRepositoryInterface
     {
         $permohonanTable = (new Permohonan)->getTable();
 
-        // Query permohonan status Selesai yang memiliki review
+        // Query permohonan status Selesai atau Ringkasan_Terkirim yang memiliki review
         $query = Permohonan::query()
-            ->where('status', 'Selesai')
+            ->whereIn('status', ['Selesai', 'Ringkasan_Terkirim'])
             ->whereHas('review', function ($q) {
                 $q->where('status', 'approved');
             })
@@ -84,7 +84,7 @@ class RiwayatKunjunganRepository implements RiwayatKunjunganRepositoryInterface
     public function getStatistik(): array
     {
         $baseQuery = Permohonan::query()
-            ->where('status', 'Selesai')
+            ->whereIn('status', ['Selesai', 'Ringkasan_Terkirim'])
             ->whereHas('review', function ($q) {
                 $q->where('status', 'approved');
             });
@@ -93,7 +93,7 @@ class RiwayatKunjunganRepository implements RiwayatKunjunganRepositoryInterface
 
         $avgRating = Review::where('status', 'approved')
             ->whereHas('permohonan', function ($q) {
-                $q->where('status', 'Selesai');
+                $q->whereIn('status', ['Selesai', 'Ringkasan_Terkirim']);
             })->avg('rating');
 
         return [

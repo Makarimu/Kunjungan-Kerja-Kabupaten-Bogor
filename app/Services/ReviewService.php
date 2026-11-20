@@ -19,7 +19,7 @@ class ReviewService
      */
     public function submitReview(Permohonan $permohonan, array $data): Review
     {
-        if ($permohonan->status !== 'Selesai') {
+        if (!in_array($permohonan->status, ['Selesai', 'Ringkasan_Terkirim'])) {
             throw new Exception('Review hanya dapat diberikan setelah kunjungan selesai.');
         }
 

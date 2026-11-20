@@ -7,14 +7,15 @@ use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithStyles;
-use Maatwebsite\Excel\Concerns\WithColumnWidths;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Concerns\WithColumnFormatting;
 use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use Carbon\Carbon;
 
 class PermohonanExport implements
@@ -23,10 +24,12 @@ class PermohonanExport implements
     WithMapping,
     WithStyles,
     WithTitle,
-    WithEvents
+    WithEvents,
+    WithColumnFormatting
 {
     protected Collection $data;
     protected string $exportedAt;
+    private int $rowNumber = 0;
 
     public function __construct(Collection $data)
     {
@@ -47,66 +50,101 @@ class PermohonanExport implements
     public function headings(): array
     {
         return [
+            'No.',
             'No. Permohonan',
+            'Nomor Surat',
             'Tanggal Pengajuan',
             'Nama Instansi',
-            'Alamat Instansi',
             'Nama PIC',
-            'Jabatan',
+            'Jabatan PIC',
             'Nomor Telepon',
             'Email',
+            'Ketua Rombongan',
+            'Jabatan Ketua Rombongan',
             'Jumlah Peserta',
-            'Tanggal Kunjungan',
-            'Jam Kunjungan',
             'Dinas Tujuan',
-            'Tujuan Kunjungan',
+            'Tanggal Kunjungan',
+            'Jam Penerimaan',
+            'Maksud / Tujuan Kunjungan',
+            'Rencana Menginap',
+            'Nama Hotel / Penginapan',
+            'Status Bukti Penginapan',
             'Status',
+            'Narasumber / Pejabat Penerima',
             'Tanggal Persetujuan',
-            'Admin yang Memproses',
             'Tanggal Selesai',
+            'Catatan / Keterangan Admin',
         ];
     }
 
     public function map($row): array
     {
+        $this->rowNumber++;
+
+        // Status Penginapan & Bukti
+        $rencanaMenginap = $row->rencana_menginap ?? 'Tidak';
+        $hotel = ($rencanaMenginap === 'Ya' || !empty($row->nama_hotel))
+            ? ($row->nama_hotel ?: 'Belum Ditentukan')
+            : '-';
+
+        $buktiPenginapan = $row->bukti_menginap
+            ? 'Sudah Diunggah'
+            : ($rencanaMenginap === 'Ya' ? 'Belum Diunggah' : 'Tidak Ada');
+
+        // Tanggal Persetujuan
+        $tglDisetujui = '-';
+        if (!empty($row->tgl_disetujui)) {
+            $tglDisetujui = Carbon::parse($row->tgl_disetujui)->locale('id')->isoFormat('D MMMM YYYY HH:mm');
+        } elseif ($row->status === 'Disetujui' && !empty($row->tgl_diproses)) {
+            $tglDisetujui = Carbon::parse($row->tgl_diproses)->locale('id')->isoFormat('D MMMM YYYY HH:mm');
+        }
+
+        // Tanggal Selesai Kunjungan
+        $tglSelesai = '-';
+        if (!empty($row->tanggal_selesai_kunjungan)) {
+            $tglSelesai = Carbon::parse($row->tanggal_selesai_kunjungan)->locale('id')->isoFormat('D MMMM YYYY HH:mm');
+        } elseif ($row->status === 'Selesai' && !empty($row->updated_at)) {
+            $tglSelesai = Carbon::parse($row->updated_at)->locale('id')->isoFormat('D MMMM YYYY HH:mm');
+        }
+
         return [
+            $this->rowNumber,
             $row->kode,
+            $row->nomor_surat ?? '-',
             $row->created_at ? Carbon::parse($row->created_at)->locale('id')->isoFormat('D MMMM YYYY HH:mm') : '-',
-            $row->instansi,
-            $row->nama_hotel ?? '-',          // Alamat instansi — field tersedia adalah nama_hotel, atau bisa dikosongkan
-            $row->nama_pic,
-            $row->jabatan_pic,
-            $row->no_telp,
-            $row->email,
-            $row->jumlah_peserta . ' orang',
+            $row->instansi ?? '-',
+            $row->nama_pic ?? '-',
+            $row->jabatan_pic ?? '-',
+            $row->no_telp ? (string) $row->no_telp : '-',
+            $row->email ?? '-',
+            $row->nama_ketua_rombongan ?? '-',
+            $row->jabatan_ketua_rombongan ?? '-',
+            $row->jumlah_peserta ? $row->jumlah_peserta . ' orang' : '-',
+            $row->dinas_tujuan ?? '-',
             $row->tanggal_kunjungan ? Carbon::parse($row->tanggal_kunjungan)->locale('id')->isoFormat('D MMMM YYYY') : '-',
             $row->jam_penerimaan ? $row->jam_penerimaan . ' WIB' : '-',
-            $row->dinas_tujuan ?? '-',
-            $row->tujuan,
-            $row->status,
-            $row->tgl_diproses ? Carbon::parse($row->tgl_diproses)->locale('id')->isoFormat('D MMMM YYYY HH:mm') : '-',
+            $row->tujuan ?? '-',
+            $rencanaMenginap,
+            $hotel,
+            $buktiPenginapan,
+            $row->status ?? '-',
             $row->narasumber ?? '-',
-            $row->tgl_diproses ? Carbon::parse($row->tgl_diproses)->locale('id')->isoFormat('D MMMM YYYY') : '-',
+            $tglDisetujui,
+            $tglSelesai,
+            $row->keterangan_admin ?? '-',
+        ];
+    }
+
+    public function columnFormats(): array
+    {
+        return [
+            'H' => NumberFormat::FORMAT_TEXT, // No. Telepon agar angka 0 di depan tidak terpotong
         ];
     }
 
     public function styles(Worksheet $sheet): array
     {
-        // Style for header row (row 3 — because row 1 = title, row 2 = export date)
-        return [
-            3 => [
-                'font' => ['bold' => true, 'size' => 10],
-                'fill' => [
-                    'fillType' => Fill::FILL_SOLID,
-                    'startColor' => ['rgb' => '2E7D32'],
-                ],
-                'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF'], 'size' => 10],
-                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
-                'borders' => [
-                    'allBorders' => ['borderStyle' => Border::BORDER_THIN],
-                ],
-            ],
-        ];
+        return [];
     }
 
     public function registerEvents(): array
@@ -114,7 +152,7 @@ class PermohonanExport implements
         return [
             AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet->getDelegate();
-                $totalColumns = 17;
+                $totalColumns = count($this->headings());
                 $lastCol      = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($totalColumns);
 
                 // Insert title rows before the data
@@ -128,26 +166,26 @@ class PermohonanExport implements
                     'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
                     'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'D1FAE5']],
                 ]);
-                $sheet->getRowDimension(1)->setRowHeight(28);
+                $sheet->getRowDimension(1)->setRowHeight(30);
 
                 // Row 2: Export date
                 $sheet->mergeCells("A2:{$lastCol}2");
                 $sheet->setCellValue('A2', 'Tanggal Export: ' . $this->exportedAt);
                 $sheet->getStyle('A2')->applyFromArray([
                     'font'      => ['italic' => true, 'size' => 10, 'color' => ['rgb' => '374151']],
-                    'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+                    'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
                     'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'F0FDF4']],
                 ]);
-                $sheet->getRowDimension(2)->setRowHeight(18);
+                $sheet->getRowDimension(2)->setRowHeight(20);
 
                 // Header row (now row 3)
                 $sheet->getStyle("A3:{$lastCol}3")->applyFromArray([
                     'font'      => ['bold' => true, 'size' => 10, 'color' => ['rgb' => 'FFFFFF']],
                     'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '2E7D32']],
-                    'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+                    'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
                     'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'FFFFFF']]],
                 ]);
-                $sheet->getRowDimension(3)->setRowHeight(20);
+                $sheet->getRowDimension(3)->setRowHeight(26);
 
                 // Auto-width for all columns
                 for ($col = 1; $col <= $totalColumns; $col++) {
@@ -174,6 +212,16 @@ class PermohonanExport implements
                             ]);
                         }
                     }
+
+                    // Specific column alignments for readability
+                    $centeredCols = ['A', 'B', 'C', 'D', 'H', 'L', 'N', 'O', 'Q', 'S', 'T', 'V', 'W'];
+                    foreach ($centeredCols as $c) {
+                        $sheet->getStyle("{$c}4:{$c}{$lastDataRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                    }
+
+                    // Wrap text for long content: Maksud / Tujuan (P) & Catatan Admin (X)
+                    $sheet->getStyle("P4:P{$lastDataRow}")->getAlignment()->setWrapText(true);
+                    $sheet->getStyle("X4:X{$lastDataRow}")->getAlignment()->setWrapText(true);
                 }
 
                 // Freeze panes at row 4 (so title + header stay visible when scrolling)
